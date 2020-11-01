@@ -221,69 +221,6 @@ def step1SetUpCMD(env):
 
     return cmdline
 
-def step2APreprocessLLVM(seqfile, logfilename, backend, clangpath):
-    import subprocess
-    llvmcmd = ""   # llvm command
-
-    if backend == "llbmc":
-        if clangpath == "":    # No supported version from user
-            # Check for clang version 3.3 in default search path
-            try:
-                output = subprocess.check_output("which clang", shell=True)
-            except subprocess.CalledProcessError:
-                print("error: llbmc requires clang version 3.3 installed in the system")
-                sys.exit(2)
-            try:
-                output = subprocess.check_output("clang --version", shell=True)
-                if "version 3.3" not in output:
-                    print("error: the current version of clang does not match llbmc requirement (require version 3.3)")
-                    sys.exit(2)
-                else:
-                    llvmcmd = "clang -c -g -emit-llvm %s -o %s" % (seqfile, seqfile[:-2] + ".bc")
-            except subprocess.CalledProcessError:
-                pass   # supress error
-        else:
-            llvmcmd = "%s -c -g -emit-llvm %s -o %s" % (clangpath, seqfile, seqfile[:-2] + ".bc")
-
-    if backend == "klee":
-        if clangpath == "":    # No supported version from user
-            # Check for clang version 3.3 in default search path
-            try:
-                output = subprocess.check_output("which llvm-gcc", shell=True)
-            except subprocess.CalledProcessError:
-                print("error: klee requires llvm-gcc version 2.9 installed in the system")
-                sys.exit(2)
-            try:
-                output = subprocess.check_output("llvm-gcc --version", shell=True)
-                if "LLVM build 2.9" not in output:
-                    print("error: the version of llvm-gcc in the system does not match klee requirement (require version 2.9)")
-                    sys.exit(2)
-                else:
-                    llvmcmd = "llvm-gcc -c -g -emit-llvm %s -o %s" % (seqfile, seqfile[:-2] + ".bc")
-            except subprocess.CalledProcessError:
-                pass   # supress error
-        else:
-            # TODO: remember to add this before using KLEE     `ulimit -s unlimited`
-            llvmcmd = "%s -c -g -emit-llvm %s -o %s" % (clangpath, seqfile, seqfile[:-2] + ".bc")
-
-    if backend == "pagai":
-        try:
-            output = subprocess.check_output("which clang-3.5", shell=True)
-        except subprocess.CalledProcessError:
-            print("error: pagai requires clang installed in the system")
-            sys.exit(2)
-        # Copy pagai_assert.h to the directory of the files
-        execpath = os.path.dirname(sys.argv[0])
-        assertfile = execpath + "/backends/pagai/pagai_assert.h"
-        shutil.copy(assertfile, os.path.dirname(seqfile))
-        # Register compile script for pagai
-        llvmscript = execpath + "/backends/pagai/compile_llvm.sh"
-        llvmcmd = "%s -g -i %s -o %s" % (llvmscript, seqfile, seqfile[:-2] + ".bc")
-
-    command = utils.Command(llvmcmd)
-    out, err, code = command.run(timeout=86400)
-    utils.saveFile(logfilename, err)
-
 def step2RunCMD(cmdline, timeout, seqfile, format):
     currentdir = os.path.dirname(sys.argv[0])
     newcmdline = cmdline + seqfile
@@ -295,12 +232,11 @@ def step2RunCMD(cmdline, timeout, seqfile, format):
     command = utils.Command(newcmdline)
     # store stdout, stderr, process" return value
     results = command.run(timeout=timeout)
-    
+
     os.chdir(currentdir) # change back to current dir
     return results
 
-def step3ProcessResult(seqfile,
-        format, verbose, counterexample, witness,
+def step3ProcessResult(seqfile, format, verbose, counterexample, witness,
         out, err, retcode, memory,
         logfilename, realstarttime, timeBeforeCallingBackend, keepLog=True):
 
@@ -468,7 +404,27 @@ def step3ProcessResult(seqfile,
 
     return outcome, backendtime, overalltime, memory, cex
 
-      
+
+def backendWorker(cmdline):
+    (cmd, format, inputfile, logfilename, timeout, keepLog, clangPath, verbose, cex, witness) = cmdline
+    timeBeforeCallingBackend = time.time()    # save wall time
+
+    if format in ("klee", "llbmc", "pagai"):
+        step2APreprocessLLVM(inputfile, logfilename, format, clangPath)
+
+    out, err, code, memory = step2RunCMD(cmd, timeout, inputfile, format)
+    out = out.decode()
+    err = err.decode()
+    outcome, backendtime, overalltime, memory, cex = step3ProcessResult(inputfile,
+        format, verbose, cex, witness,
+        out, err, code, memory,
+        logfilename, 0, timeBeforeCallingBackend,
+        keepLog=keepLog)
+    if not verbose:
+        printStats(inputfile, outcome, backendtime, memory)
+    return (inputfile, outcome, backendtime, memory, time.time())
+
+
 def callBackendSwarm(env, listFile, realstarttime, logger=None, instanceIterator=None):
     if instanceIterator == None:
         seqfileList, result = translator_handler.step5GetFileListNormal(listFile)
@@ -561,7 +517,7 @@ def callBackendSwarm(env, listFile, realstarttime, logger=None, instanceIterator
                 print("============================================================================")
 
                 sys.stdout.flush()
-                pool = multiprocessing.Pool(processes=pool_size, initializer=start_process)
+                pool = multiprocessing.Pool(processes=pool_size)
                 try:
                     for out in pool.imap(backendWorker, joblist):
                         if "FALSE" in out:
@@ -722,7 +678,7 @@ def callBackendSwarm(env, listFile, realstarttime, logger=None, instanceIterator
             print("Analyzing instance(s) with %ss timeout for %s processes" % (initalTimeout, pool_size))
             print("===================================================")
             sys.stdout.flush()
-            pool = multiprocessing.Pool(processes=pool_size, initializer=start_process)
+            pool = multiprocessing.Pool(processes=pool_size)
 
             # create jobs for all workers
             jobIterator = getJobIterator(instanceIterator)

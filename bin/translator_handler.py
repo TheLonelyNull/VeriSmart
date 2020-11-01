@@ -8,7 +8,102 @@ import json
 
 from bin import utils
 
+def step1SetupCMD(env, inputfile, isSwarm=False, logger=None):
+    if env["verbose"]:
+        print ("\ninput:  %s") % (inputfile)
+    # Call indepently (doesn"t matter when it gets called)
+    # Real path os this file
+    cmdline = os.path.dirname(sys.argv[0]) + "/"
+    if env["swarm-translator"] != "":
+        cmdline += env["swarm-translator"]
+    else:
+        from bin import config
+        if isSwarm:
+            cmdline += config.relpath["swarmtranslator"]
+        else:
+            cmdline += config.relpath["translator"]
 
+    cmdline += " -i %s --rounds %s --backend %s --error-label %s" % (
+        str(inputfile), str(env["rounds"]),
+        env["backend"], env["error-label"])
+    cmdline += " --unwind " + str(env["unwind"])
+    # Mind CIL feature
+    if env["forunwind"] != 0:
+        cmdline += "  --unwind-for " + str(env["forunwind"])
+    if env["whileunwind"] != 0:
+        cmdline += " --unwind-while " + str(env["whileunwind"])
+    if env["soft-unwind-max"] != 0:
+        cmdline += " --unwind-for-max " + str(env["soft-unwind-max"])
+    if env["softunwindbound"]:
+        cmdline += " --softunwindbound"
+    # Enable debug
+    # if env["debug"]:
+    #     cmdline += " -D"
+    if env["deadlock"]:
+        cmdline += " --deadlock"
+    if env["keepstaticarray"]:
+        cmdline += " --keepstaticarray"
+    if env["donotcheckvisiblepointer"]:
+        cmdline += " --donotcheckvisiblepointer"
+    if env["explode-pc"]:
+        cmdline += " --decomposepc"
+    if env["robin"]:
+        cmdline += " --robin"
+    else:
+        cmdline += " --norobin"
+    if env["chain"] != "":
+        cmdline += " -l %s" % env["chain"]
+    if env["suffix"] != "":
+        cmdline += " --suffix %s" % env["suffix"]
+    if env["wmm"]:    # for wmm generator only
+        cmdline += " --wmm "
+    if env["svcomp"]:
+        cmdline += " --svcomp "
+    if env["cex"]:
+        if env["analysis-mode"] == "normal":
+            cmdline += " --cex "
+            if env["stop-on-fail"]:
+                cmdline += " --stop-on-fail "
+        else:
+            cmdline += " --dump-env "
+
+    return cmdline
+
+def step2GetThreadLines(env, cmdline, inputfile, verbose=True):
+    print(cmdline)
+    p = subprocess.Popen(shlex.split(cmdline + " -Y"), stdout=subprocess.PIPE)
+    out, err = p.communicate()
+    out = out.decode()
+    cseqanswer = p.returncode
+    #cseqanswer vale 1
+    logfile = inputfile + ".threadline"
+    print(logfile)
+    utils.saveFile(logfile, out)
+
+    if env["verbose"]:
+        print("cmd:    " + cmdline + " -Y")
+
+    """ now check that the sequentialisation went fine """
+    if cseqanswer != 0:   # doesn"t well
+        if env["verbose"]:
+            print("\n       (unable to sequentialise input file  -  see below for details)\n")
+        if env["verbose"]:
+            print(utils.colors.BLACK + "- " * 32)
+        with open(logfile) as file:
+            data = file.read()
+            print(data)
+        if env["verbose"]:
+            print(utils.colors.BLACK + "- " * 32 + utils.colors.NO + "\n")
+        if env["verbose"]:
+            print(utils.colors.YELLOW + "        UNKNOWN\n" + utils.colors.NO)
+
+        return "", False
+    else:     # Sequentialization went well
+        # Print thread lines of each thread
+        if verbose:
+            print(out)
+            sys.stdout.flush()
+        return out, True
 
 def step3GenerateConfigIteratorNormal(env,out,configFilename,inputfile,percent,logger=None):
     configGen = utils.ConfigGenerator(out, percent, env["cluster-config"], env["window-length"],  env["window-percent"],  env["picked-window"],
@@ -36,8 +131,7 @@ def step4GenerateInstanceIterator(env, cmdline, configIterator,listFile):
     for config in configIterator:
         filename,chosenInstances,b = config
         newcmdline = cmdline + " -C \"%s\"" % filename
-#        else:
-#            newcmdline = cmdline + " -C %s" % newConfigFilename  
+ 
         newcmdline += " -Z %s" % listFile
         if env["verbose"]:
             print(newcmdline)
@@ -48,6 +142,14 @@ def step4GenerateInstanceIterator(env, cmdline, configIterator,listFile):
         yield i
         i+=1
 
+def step5GetFileListNormal(listFile):
+    seqfileList = []
+    flist = open(listFile)
+    text = flist.read()
+    for line in text.splitlines():
+        seqfileList.append(line)
+    flist.close()
+    return seqfileList, True
 
 #changed to iterator
 def callTranslatorSwarm(env, inputfile, percent, logger=None):
