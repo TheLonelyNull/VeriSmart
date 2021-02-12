@@ -22,10 +22,9 @@ Built upon Lazy-CSeq 2.0
 To install VeriSmart, please follow the steps below:
 
     1. (locally) install the dependencies for Python 2:
-        - Python 2.7
-        - PYCParser 2.17 (pip2 install --user pycparser==2.17)
-        - ijson (pip2 install --user ijson)
-        - Python futures (pip2 install --user futures)
+        - Python 3.8
+        - PYCParser 2.20 (pip3 install --user pycparser==2.20)
+        - ijson (pip3 install --user ijson)
         - CBMC (available from http://www.cprover.org/cbmc/) 
           note that we tested VeriSmart with CBMC v5.11 only
 

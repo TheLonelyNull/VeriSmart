@@ -1,0 +1,31 @@
+# Chain for Lazycseq & Verismart (January 2021)
+#
+#
+
+workarounds
+functiontracker
+
+preinstrumenter
+constants
+spinlock
+
+# program simplification
+switchtransformer
+dowhileconverter
+conditionextractor
+#shortcircuitconverter
+
+varnames
+
+# program flattening
+inliner
+unroller
+duplicator
+
+# sequentialization
+condwaitconverter
+lazyseqnewschedule
+loopAnalysis
+
+@backend instrumenter
+@backend feeder

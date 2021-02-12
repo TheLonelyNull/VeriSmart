@@ -11,6 +11,37 @@ from bin import translator_handler
 
 from bin.cex_handler import CEX
 
+VERSION = "RC-2015.07.21"
+
+"""
+
+Objectives:
+    Backends handler for Lazy-Cseq
+
+Prerequisites:
+    - Backends dependencies
+
+TODO:
+    - Add real command line for SeaHorn (from sea not sea_svcomp)
+    - Add checker for Pagai, currently not working
+    - Add checker for interproc and concurrentInterproc
+    - handling of memory limit for backend (important for cluster jobs)
+
+Changelog:
+    2018.07.09  Improve output for split-config analysis
+    2016.05.17  Add seahorn as a backend
+    2016.05.17  Fix preprocess for pagai
+    2015.07.21  Change to os.path component to be compatible with pyinstaller
+    2015.07.04  Add 2ls backend
+    2015.05.13  Now change to reversed the logfile to find result (may be faster)
+    2015.05.11  Add supported preprocess for pagai backend (http://pagai.forge.imag.fr/)
+    2015.03.06  Add supported preprocess for llbmc and klee backend
+    2015.02.12  Add Frama-C backend
+    2015.02.03  Code refactoring
+    2015.01.31  Add calling backend in Sequential or Parallel mode + swarm strategy
+    2015.01.16  Add logging and fix sequential launch of SWARM
+    2014.12.12  Initial version
+"""
 
 
 def printStats(file, result, time, memory=0, verbose=True):
@@ -95,6 +126,8 @@ def step1SetUpCMD(env):
     backendFilename = backendDict()
     # Command-line parameters, by backend.
     cmdLineOptions = {}
+    # BMC backends
+    #cmdLineOptions["cbmc"] = " --32 --unwind 1 --no-unwinding-assertions "
     cmdLineOptions["cbmc"] = " --unwind 1 --no-unwinding-assertions "
     cmdLineOptions["esbmc"] = " --no-slice --no-bounds-check --no-div-by-zero-check --no-pointer-check --unwind 1 --no-unwinding-assertions "
     cmdLineOptions["llbmc"] = " -no-max-function-call-depth-checks -no-memory-free-checks -no-shift-checks -no-memcpy-disjoint-checks -no-memory-access-checks -no-memory-allocation-checks --max-loop-iterations=1 --no-max-loop-iterations-checks --ignore-missing-function-bodies -no-overflow-checks -no-div-by-zero-checks "
@@ -138,7 +171,8 @@ def step1SetUpCMD(env):
             cmdline += " --depth %s " % str(depth)
         if env["cex"] or env["stop-on-fail"]:
             cmdline += "--stop-on-fail "
-
+#       if env["stop-on-fail"]:
+#           cmdline += " --stop-on-fail "
         if env["bounds-check"]:
             cmdline += " --bounds-check "
         if env["div-by-zero-check"]:
@@ -221,6 +255,69 @@ def step1SetUpCMD(env):
 
     return cmdline
 
+def step2APreprocessLLVM(seqfile, logfilename, backend, clangpath):
+    import subprocess
+    llvmcmd = ""   # llvm command
+
+    if backend == "llbmc":
+        if clangpath == "":    # No supported version from user
+            # Check for clang version 3.3 in default search path
+            try:
+                output = subprocess.check_output("which clang", shell=True)
+            except subprocess.CalledProcessError:
+                print("error: llbmc requires clang version 3.3 installed in the system")
+                sys.exit(2)
+            try:
+                output = subprocess.check_output("clang --version", shell=True)
+                if "version 3.3" not in output:
+                    print("error: the current version of clang does not match llbmc requirement (require version 3.3)")
+                    sys.exit(2)
+                else:
+                    llvmcmd = "clang -c -g -emit-llvm %s -o %s" % (seqfile, seqfile[:-2] + ".bc")
+            except subprocess.CalledProcessError:
+                pass   # supress error
+        else:
+            llvmcmd = "%s -c -g -emit-llvm %s -o %s" % (clangpath, seqfile, seqfile[:-2] + ".bc")
+
+    if backend == "klee":
+        if clangpath == "":    # No supported version from user
+            # Check for clang version 3.3 in default search path
+            try:
+                output = subprocess.check_output("which llvm-gcc", shell=True)
+            except subprocess.CalledProcessError:
+                print("error: klee requires llvm-gcc version 2.9 installed in the system")
+                sys.exit(2)
+            try:
+                output = subprocess.check_output("llvm-gcc --version", shell=True)
+                if "LLVM build 2.9" not in output:
+                    print("error: the version of llvm-gcc in the system does not match klee requirement (require version 2.9)")
+                    sys.exit(2)
+                else:
+                    llvmcmd = "llvm-gcc -c -g -emit-llvm %s -o %s" % (seqfile, seqfile[:-2] + ".bc")
+            except subprocess.CalledProcessError:
+                pass   # supress error
+        else:
+            # TODO: remember to add this before using KLEE     `ulimit -s unlimited`
+            llvmcmd = "%s -c -g -emit-llvm %s -o %s" % (clangpath, seqfile, seqfile[:-2] + ".bc")
+
+    if backend == "pagai":
+        try:
+            output = subprocess.check_output("which clang-3.5", shell=True)
+        except subprocess.CalledProcessError:
+            print("error: pagai requires clang installed in the system")
+            sys.exit(2)
+        # Copy pagai_assert.h to the directory of the files
+        execpath = os.path.dirname(sys.argv[0])
+        assertfile = execpath + "/backends/pagai/pagai_assert.h"
+        shutil.copy(assertfile, os.path.dirname(seqfile))
+        # Register compile script for pagai
+        llvmscript = execpath + "/backends/pagai/compile_llvm.sh"
+        llvmcmd = "%s -g -i %s -o %s" % (llvmscript, seqfile, seqfile[:-2] + ".bc")
+
+    command = utils.Command(llvmcmd)
+    out, err, code = command.run(timeout=86400)
+    utils.saveFile(logfilename, err)
+
 def step2RunCMD(cmdline, timeout, seqfile, format):
     currentdir = os.path.dirname(sys.argv[0])
     newcmdline = cmdline + seqfile
@@ -232,11 +329,12 @@ def step2RunCMD(cmdline, timeout, seqfile, format):
     command = utils.Command(newcmdline)
     # store stdout, stderr, process" return value
     results = command.run(timeout=timeout)
-
+    
     os.chdir(currentdir) # change back to current dir
     return results
 
-def step3ProcessResult(seqfile, format, verbose, counterexample, witness,
+def step3ProcessResult(seqfile,
+        format, verbose, counterexample, witness,
         out, err, retcode, memory,
         logfilename, realstarttime, timeBeforeCallingBackend, keepLog=True):
 
@@ -404,9 +502,44 @@ def step3ProcessResult(seqfile, format, verbose, counterexample, witness,
 
     return outcome, backendtime, overalltime, memory, cex
 
+def callBackend(env, seqfile, realstarttime, logger=None):
+    format = env["backend"]
+    # Setting up CMD
+    cmdline = step1SetUpCMD(env)
+    logfilename = seqfile + "." + format + ".log"
+
+    if env["verbose"]:
+        print("output: %s" % (seqfile))
+    if env["verbose"]:
+        print("log:    %s\n" % (logfilename))
+    if env["verbose"]:
+        print("cmd:   %s\n" % (cmdline + seqfile))
+    if env["verbose"]:
+        print("start:  %s\n" % (strftime("%Y-%m-%d %H:%M:%S", gmtime())))
+
+    timeBeforeCallingBackend = time.time()    # save wall time
+    if format in ("klee", "llbmc", "pagai"):
+        step2APreprocessLLVM(seqfile, logfilename, format, env["clang-path"])
+
+    # Run command
+    out, err, retcode, memory = step2RunCMD(cmdline, env["timelimit"], seqfile, format)
+
+    outcome, backendtime, overalltime, memory, cex = step3ProcessResult(seqfile,
+        format, env["verbose"], env["cex"], env["witness"],
+        out, err, retcode, memory,
+        logfilename, realstarttime, timeBeforeCallingBackend)
+    return outcome, overalltime
+
+def start_process():
+    """ Put some debug information here if wanted
+    """
+    pass
 
 def backendWorker(cmdline):
     (cmd, format, inputfile, logfilename, timeout, keepLog, clangPath, verbose, cex, witness) = cmdline
+    #time.sleep(3*(index+1))
+    #print"PIPPO %d" % (index+1)
+    #eturn (inputfile, "FALSE", 1, 1)
     timeBeforeCallingBackend = time.time()    # save wall time
 
     if format in ("klee", "llbmc", "pagai"):
@@ -423,8 +556,7 @@ def backendWorker(cmdline):
     if not verbose:
         printStats(inputfile, outcome, backendtime, memory)
     return (inputfile, outcome, backendtime, memory, time.time())
-
-
+          
 def callBackendSwarm(env, listFile, realstarttime, logger=None, instanceIterator=None):
     if instanceIterator == None:
         seqfileList, result = translator_handler.step5GetFileListNormal(listFile)
@@ -517,7 +649,7 @@ def callBackendSwarm(env, listFile, realstarttime, logger=None, instanceIterator
                 print("============================================================================")
 
                 sys.stdout.flush()
-                pool = multiprocessing.Pool(processes=pool_size)
+                pool = multiprocessing.Pool(processes=pool_size, initializer=start_process)
                 try:
                     for out in pool.imap(backendWorker, joblist):
                         if "FALSE" in out:
@@ -574,7 +706,6 @@ def callBackendSwarm(env, listFile, realstarttime, logger=None, instanceIterator
         format = env["backend"]
         # Setting up CMD
         cmdline = step1SetUpCMD(env)
-
         if env["execution-mode"] == "sequential":
             initalTimeout = env["initial-timeout"]
             foundBug = False
@@ -664,7 +795,6 @@ def callBackendSwarm(env, listFile, realstarttime, logger=None, instanceIterator
                             yield cmdpack
 
                     except StopIteration as e:
-                        print("test")
                         sys.exit(0)
 
             manager = multiprocessing.Manager()
@@ -672,16 +802,21 @@ def callBackendSwarm(env, listFile, realstarttime, logger=None, instanceIterator
 
             def logResults(out):
                  results.put(out)
+            #    event.set()
 
+            #interrupted = False
             pool_size = multiprocessing.cpu_count()  # for cores of cpu
             pool_size = env["cores"]
             print("Analyzing instance(s) with %ss timeout for %s processes" % (initalTimeout, pool_size))
-            print("===================================================")
+            print("============================================================================")
             sys.stdout.flush()
-            pool = multiprocessing.Pool(processes=pool_size)
+            pool = multiprocessing.Pool(processes=pool_size, initializer=start_process)
 
             # create jobs for all workers
             jobIterator = getJobIterator(instanceIterator)
+            #while initalTimeout <= env["timelimit"]:
+                # Spawning multiple process in a pool
+                #    joblist.append(cmdpack)
             sentinel = object()
             try:
                 for i in range(0, pool_size):
@@ -711,7 +846,8 @@ def callBackendSwarm(env, listFile, realstarttime, logger=None, instanceIterator
             # Stop pool nicely
             pool.close()
             pool.join()
-
+            #if interrupted or (env["exit-on-error"] and foundBug):
+            #          break
             if not foundBug:
                while not results.empty():
                   out = results.get(False)
@@ -739,3 +875,92 @@ def callBackendSwarm(env, listFile, realstarttime, logger=None, instanceIterator
             #os.killpg(os.getpid(),signal.SIGKILL)
             os.system("killall -q -9 cbmc")
             return foundBug, overalltime
+
+def callBackendSwarmSA(env, seqfileList, realstarttime, logger=None):
+    format = env["backend"]
+    # Setting up CMD
+    cmdline = step1SetUpCMD(env)
+    # Begin business here
+    timeout = env["timeout"]
+    realstarttime = time.time()
+    if env["execution-mode"] == "sequential":  # Sequential analyzing
+        noInstance = len(seqfileList)  # number of instances
+        candidateList = {}
+        m = "Analyzing %s instance(s) SEQUENTIALLY with %ss timeout for each" % (noInstance, env["timeout"])
+        logger.record(m + "\n")
+        print(m)
+        print("============================================================================")
+        sys.stdout.flush()
+        for seqf in seqfileList:
+            timeBeforeCallingBackend = time.time()    # save wall time
+            logfilename = seqf + "." + format + ".log"
+            if format in ("klee", "llbmc", "pagai"):
+                step2APreprocessLLVM(seqf, logfilename, format, env["clang-path"])
+
+            out, err, code, memory = step2RunCMD(cmdline, timeout, seqf, format)
+            outcome, backendtime, overalltime, memory, cex = step3ProcessResult(seqf,
+                format, env["verbose"], env["cex"], env["witness"],
+                out, err, code, memory,
+                logfilename, realstarttime, timeBeforeCallingBackend,
+                keepLog=env["keep-logs"])
+
+            if not env["verbose"]:
+                printStats(seqf, outcome, backendtime, memory)
+
+            if outcome == "FALSE":
+                candidateList[seqf] = backendtime
+                if timeout > backendtime:
+                    timeout = int(backendtime+1)
+
+        # Calculate overall time
+        overalltime = time.time() - realstarttime
+        logger.record("Finish in %0.2fs\n" % overalltime)
+        print("========================================================")
+        print("Finish analyzing all instances in %0.2fs" % overalltime)
+        print("========================================================")
+        print("============================================================================")
+        sys.stdout.flush()
+        # Set up thing before return
+        env["timeout"] = timeout
+        return candidateList
+    if env["execution-mode"] == "parallel":  # Parallel
+        candidateList = {}
+        noInstance = len(seqfileList)
+        # create jobs for all workers
+        joblist = []
+        for seqf in seqfileList:
+            logfilename = seqf + "." + format + ".log"
+            cmdpack = (cmdline, format, seqf, logfilename, timeout, env["keep-logs"], env["clang-path"],
+                        env["verbose"], env["cex"], env["witness"])
+            joblist.append(cmdpack)
+        # Spawning multiple process in a pool
+        pool_size = env["cores"]
+        m = "Analyzing %s instance(s) IN PARALLEL with %ss timeout for %s process(es)" % (
+            noInstance, timeout, pool_size)
+        logger.record(m + "\n")
+        print(m)
+        print("============================================================================")
+        sys.stdout.flush()
+        pool = multiprocessing.Pool(processes=pool_size, initializer=start_process)
+        for out in pool.imap(backendWorker, joblist):
+            mess = "%s, %s, %s" % (out[0], out[1], out[2])
+            logger.record(mess + "\n")
+            if "FALSE" in out:
+                instanceName = out[0]
+                instanceTimeBackend = out[2]
+                candidateList[instanceName] = instanceTimeBackend
+                if timeout > instanceTimeBackend:
+                    timeout = int(instanceTimeBackend+1)
+        # Stop pool nicely
+        pool.close()
+        pool.join()
+        env["timeout"] = timeout
+        # Calculate overall time
+        overalltime = time.time() - realstarttime
+        logger.record("Finish in %0.2fs\n" % overalltime)
+        print("========================================================")
+        print("Finish analyzing all instances in %0.2fs" % overalltime)
+        print("========================================================")
+        print("============================================================================")
+        sys.stdout.flush()
+        return candidateList
