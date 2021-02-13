@@ -27,12 +27,12 @@ def main(args):
 		if "-h" in argument:
 			usage(cmd)
 			print("======================================================================================")
-			subprocess.run(shlex.split(cmdline + " -h"))
+			subprocess.Popen(shlex.split(cmdline + " -h"))
 			sys.exit(1)
 		if "-H" in argument:	
 			usage(cmd)
 			print("======================================================================================")
-			subprocess.run(shlex.split(cmdline + " -H"))
+			subprocess.Popen(shlex.split(cmdline + " -H"))
 			sys.exit(1)
 		cmdline += " %s" % argument
 	subprocess.run(shlex.split(cmdline))
