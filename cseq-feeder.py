@@ -278,7 +278,6 @@ def main():
 	""" I. Initialisation """
 	"""                   """
 	cseqenv.cmdline = sys.argv
-	print(cseqenv.cmdline)
 	cseqenv.starttime = time.time()    # save wall time
 
 	# Extract the configuration from the command-line or set it to the default.
