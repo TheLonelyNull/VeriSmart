@@ -124,6 +124,7 @@ class loopAnalysis(core.module.Translator):
 			pool.terminate()
 			pool.close()
 			pool.join()
+			sys.exit(1)
 
 		pool.close()
 		pool.join()
@@ -294,11 +295,8 @@ class loopAnalysis(core.module.Translator):
 					env.maps.append(m.outputtoinput)
 					env.lastlinenoinlastmodule = m.output.count("\n")
 
-			except Exception as e:
-				print("Error while performing %s->%s:\n"
-					  % (env.backendmodules[env.transforms - 1].getname() if env.transforms > 0 else "",
-						 env.backendmodules[env.transforms].getname()))
-				# traceback.print_exc(file=sys.stdout)
+			except KeyboardInterrupt as e:
+				print("Chain interrupted by user")
 				sys.exit(1)
 
 		cbmcresult = output[0]

@@ -4,7 +4,7 @@
 #include <unistd.h>
 #include <assert.h>
 
-#define NUM_THREADS 3
+#define NUM_THREADS 8
 
 typedef struct SafeStackItem
 {
