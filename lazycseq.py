@@ -35,7 +35,7 @@ def main(args):
 			subprocess.Popen(shlex.split(cmdline + " -H"))
 			sys.exit(1)
 		cmdline += " %s" % argument
-	subprocess.run(shlex.split(cmdline))
+	subprocess.Popen(shlex.split(cmdline))
 	sys.exit(0)
 
 
