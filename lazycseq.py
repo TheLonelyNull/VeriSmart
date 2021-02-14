@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import os.path
 import subprocess
 import shlex
@@ -7,16 +7,8 @@ import os.path
 import sys
 import getopt
 
-def usage(cmd, errormsg="", showHelp=True):
-	if showHelp:
-		print("")
-		print("  Lazy CSeq")
-		print("")
-		print("Usage: ")
-		print("   %s [options] -i FILE (.c)" % cmd)
-		print("")
-	if errormsg:
-		print(errormsg + "\n")
+from bin import log_handler
+
 
 def main(args):
 	cmd = args[0]
@@ -25,13 +17,9 @@ def main(args):
 	cmdline += config.relpath["translator"]
 	for argument in args[1:]:
 		if "-h" in argument:
-			usage(cmd)
-			print("======================================================================================")
 			os.system(cmdline + " -h")
 			sys.exit(0)
 		if "-H" in argument:	
-			usage(cmd)
-			print("======================================================================================")
 			os.system(cmdline + " -H")
 			sys.exit(0)
 		cmdline += " %s" % argument
