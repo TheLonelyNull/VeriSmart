@@ -1,70 +1,70 @@
-# VeriSmart #
+# VeriSmart
+
 Built upon Lazy-CSeq 2.0
 
-## Package contents ##
+## Package contents
 
-| File/Directory | Description                          |
-| -------------- | ------------------------------------ |
-| verismart.py   | VeriSmart wrapper script             |
-| cseq*.py       | Translator scripts		        |
-| bin/           | VeriSmart modules                    |
-| core/          | Lazy-CSeq core framework             |
-| modules/       | modules and configuration files      |
-| examples/      | example files                        |
-| LICENSE        | VeriSmart license                    |
-| LICENSE-CSeq   | CSeq framework license               |
-| CBMC_LICENSE   | CBMC license                         |
-| README.md      | this file                            |
+| File/Directory | Description                     |
+| -------------- | ------------------------------- |
+| verismart.py   | VeriSmart wrapper script        |
+| lazycseq.py    | Lazycseq wrapper script         |
+| cseq-feeder.py | Complete tool script            |
+| bin/           | VeriSmart modules               |
+| core/          | Lazy-CSeq core framework        |
+| modules/       | modules and configuration files |
+| examples/      | example files                   |
+| LICENSE        | VeriSmart license               |
+| LICENSE-CSeq   | CSeq framework license          |
+| CBMC_LICENSE   | CBMC license                    |
+| README.md      | this file                       |
 
-
-## Installation ##
+## Installation
 
 To install VeriSmart, please follow the steps below:
 
-    1. (locally) install the dependencies for Python 2:
+    1. (locally) install the dependencies for Python 3:
         - Python 3.8
         - PYCParser 2.20 (pip3 install --user pycparser==2.20)
         - ijson (pip3 install --user ijson)
         - CBMC (available from http://www.cprover.org/cbmc/) 
           note that we tested VeriSmart with CBMC v5.11 only
-
+    
     2. create a directory, suppose this is called /workspace
-
+    
     3. extract the entire package contents into /workspace
-
+    
     4. cd /workspace
+    
+    5. set execution (+x) permissions for verismart.py, cseq-feeder.py 
+    and lazycseq.py
 
-    5. set execution (+x) permissions for verismart.py and cseq*.py
-
-
-
-## Usage ##
+## Usage
 
 The general usage of VeriSmart is 
 
-   ./verismart.py [options] FILE (.c)
+   ./verismart.py [options] -i FILE (.c)
 
 For example,  
 
-    ./verismart.py examples/lazy_unsafe.c 
+    ./verismart.py -i examples/lazy_unsafe.c 
 
 generates all possible five instances and runs the default verification backend
-over the number of threads started (default: 4). This finds a bug in second
+over the number of threads started (default: 4). This finds a bug in third
 configuration attempted.
 
 VeriSmart produces a configuration file FILE_auto_config.json and a directory
-FILE.swarm with the sequentialized instance files.
+FILE.swarm with the sequentialized instance files and their CBMC logs.
 
 The number of threads that are started can be modified with the --cores option:
 
-    ./verismart.py --cores 2 examples/lazy_unsafe.c 
+    ./verismart.py --cores 2 -i examples/lazy_unsafe.c 
 
 only starts up two threads but this still finds the error quickly.
 
 The window length can be specified with the --window-length (or -l) option; the
 argument gives the number of visible statements in the tile:
 
-    ./verismart.py -l 2 examples/lazy_unsafe.c 
+    ./verismart.py -l 2 -i examples/lazy_unsafe.c 
 
 produces only three configuations but still finds the error. Alternatively, the
 window length can be specified via the --window-percent option as percentage of
@@ -74,7 +74,7 @@ can lead to empty windows.
 The (maximum) number of tiles selected in each thread can be controlled by the
 --picked-window (or -p) option; for example, 
 
-    ./verismart.py -p 2 examples/lazy_unsafe.c 
+    ./verismart.py -p 2 -i examples/lazy_unsafe.c 
 
 picks two tiles in each thread, if the thread is actually long enough to allow
 this, and so generates ten configurations, of which four demonstrate the error.
@@ -90,7 +90,7 @@ The number of configurations can grow large very quickly, in particular for
 small window lengths and larger numbers of picked windows; it can be limited
 with the --instances-limit option:
 
-    ./verismart.py --instances-limit 2 examples/lazy_unsafe.c 
+    ./verismart.py --instances-limit 2 -i examples/lazy_unsafe.c 
 
 Note that VeriSmart chooses random configurations if the instance limit (which
 defaults to 100) is smaller than the number of possible instances.  Hence,
@@ -143,11 +143,9 @@ of VeriSmart in parallel, each using the --config-file option to
 read one of the generated configuration files and then to generate
 and verify the described instances.
 
-
 To try a more complicated example, run
 
   ./verismart.py examples/elimination-backoff-stack.c -p2 -l12 -r2 --instances-limit 20 --timeout 500 --cores 5
 
 Note that you need to increase the --instances-limit --timeout, --cores, or -l 
 to find the error, depending on the hardware.
-
