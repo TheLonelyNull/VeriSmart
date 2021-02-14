@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 """ CSeq C Sequentialization Framework
 	command-line front-end
