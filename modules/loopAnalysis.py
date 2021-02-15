@@ -206,7 +206,6 @@ class loopAnalysis(core.module.Translator):
 														env.instances_limit, consecutive=(
 															not env.scatter),
 														double=env.shifted_window, skiplist=env.skip_thread)
-
 			singleConfigFilename = configfile + ".tmp"
 			lenConf, result, generatedData = configGen.generatingConfigPercentage(singleConfigFilename,
 																				  softLimit=env.soft_limit,
@@ -215,7 +214,6 @@ class loopAnalysis(core.module.Translator):
 																				  randomness=(
 																					  not env.no_random),
 																				  start=env.start_sample)
-
 			return configGen.generatorConfigIterator(singleConfigFilename, lenConf, generatedData)
 
 		else:
@@ -236,16 +234,8 @@ class loopAnalysis(core.module.Translator):
 														  not env.no_random),
 													  start=env.start_sample)
 				else:
-					# f = open(configFilename)
-					# logger.logging(f.read(), 2)
-					# f.close()
-					# logger.writelog()
-					fd = open(configfile, "r")
-					generatedData = json.load(fd)
-					# print("%s" % generatedData)
-					# print("%s" % len(generatedData))
-					fd.close()
-					# env["instances-limit"]=len(generatedData)
+					with open(configfile, "r") as fd:
+						generatedData = json.load(fd)
 					return configGen.generatorConfigIterator(singleConfigFilename, len(generatedData), generatedData)
 			else:
 				conf = {

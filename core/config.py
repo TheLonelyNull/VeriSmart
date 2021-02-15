@@ -3,6 +3,5 @@ debugpath = 'log'
 
 # default analysis
 defaultchain = 'Calenda-DeMattia'
-
-defaultswarmchain = 'swarm'
+defaultDRchain = 'datarace'
 

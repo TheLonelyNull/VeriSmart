@@ -39,6 +39,14 @@ import core.module
 import core.parser
 import core.utils
 
+prefixes={}
+prefixes["lazy"]= "_cs_"
+prefixes["sm_tso"]= "_tso_"
+prefixes["por"]= "_por_"
+prefixes["datarace"]= "_dr_"
+prefixes["dr_swarm"]= "_drswr_"
+prefixes["por_swarm"]= "_porswr_"
+prefixes["swarm"]= "_swr_"
 
 class cseqenv:
 	cmdline = None						# full command-line
@@ -116,7 +124,7 @@ class cseqenv:
 	archive = False          	# suffix for swarm directory
 	config_only = False      	# only generate configuration files
 	cluster_config = 0       	# generate cluster of configuration files of given size
-	swarm_translator = ""    	# only generate configuration files
+	swarm_translator = ""    	
 	scatter = False          	# scatter context switch points
 	shifted_window = False	
 	percentage = False
@@ -138,6 +146,10 @@ class cseqenv:
 	nan_check = False
 	no_simplify = False
 	refine_arrays = False
+
+	#DR
+	enableDR = False
+	wwDatarace = False    # True if requires that write-write datarace are on different written values
 
 	inlineInfix = '$$$$'  # S: placeholder to insert counter value in function inlining, see varname.py and inliner.py
 
@@ -172,6 +184,7 @@ def usage(cmd, errormsg, showhelp=True, detail=False, isSwarm=False):
 		print("   ./verismart.py [options] -i FILE (.c)")
 		print("")
 		print("swarm options:")
+		print("   -i,--input=<file>                 input filename")
 		print("   -Y,--contextswitch                show number of context switches for each thread")
 		#print("   -I,--include-dir=<dir>           include directory for input file (if requires)")
 		#print("   -o,--output=<filename>           output filename (%s mode only)" % (make_bold("normal")))
@@ -181,7 +194,7 @@ def usage(cmd, errormsg, showhelp=True, detail=False, isSwarm=False):
 		#print("   --keep-logs                      keep instance logs after analyzing (default: no)")
 		print("   --config-only                     only generate tiling configuration file")
 		#print("   --cluster-config<X>              generate set of tiling configuration files of given size")
-		#print("   -c,--config-file<X>              swarm verification with manual tiling configuration file")
+		print("   -c,--config-file<X>               swarm verification with manual tiling configuration file")
 		#print("   -c,--config-file<X>              use given tiling configuration file")
 		#print("   --seq-only                       only generate sequentialized program")
 		#print("   --instances-only                 only generate tiled and sequentialized program instances")
@@ -242,7 +255,7 @@ def usage(cmd, errormsg, showhelp=True, detail=False, isSwarm=False):
 		print("   %s -i <input.c> [options]" % cmd)
 		print("")
 		print("configuration options: ")
-		print("   -l,--load=<file>                  configuration to use (default:%s%s%s)" % (core.utils.colors.HIGHLIGHT, core.config.defaultchain, core.utils.colors.NO))
+		print("   -C,--chain=<file>                    configuration chain to use (default:%s%s%s)" % (core.utils.colors.HIGHLIGHT, core.config.defaultchain, core.utils.colors.NO))
 		print("   -L,--list-configs                 show available configurations")
 		print("")
 		print("input options:")
@@ -349,9 +362,11 @@ def main():
 	cseqenv.starttime = time.time()    # save wall time
 
 	# Extract the configuration from the command-line or set it to the default.
-	cseqenv.chainname = core.utils.extractparamvalue(cseqenv.cmdline, "-c", "--conf", core.config.defaultchain)
-	cseqenv.chainfile = "modules/%s.chain" % core.utils.extractparamvalue(cseqenv.cmdline, "-c ", "--conf", core.config.defaultchain)
-
+	if "--dr " in cseqenv.cmdline:
+		cseqenv.chainfile = "modules/%s.chain" % core.utils.extractparamvalue(cseqenv.cmdline, "-C", "--chain", core.config.defaultDRchain)
+	else:
+		cseqenv.chainfile = "modules/%s.chain" % core.utils.extractparamvalue(cseqenv.cmdline, "-C", "--chain", core.config.defaultchain)
+	
 	if not core.utils.fileExists(cseqenv.chainfile):
 		usage(cseqenv.cmdline[0], "error: unable to open configuration file (%s)" % cseqenv.chainfile, showhelp=False)
 
@@ -492,9 +507,9 @@ def main():
 	""" II. Parameters """
 	"""                """
 	try:
-		shortargs = "hHvDLSdI:i:c:su:w:f:U:YT:M:l:p:b:a:d:"
-		longargs = ["help", "detailedhelp", "version", "debug", "list-configs", "showsymbols",
-					"detail", "include=", "input=", "config-file", "softunwindbound", "unwind=",
+		shortargs = "hHvDLC:SdI:i:c:su:w:f:U:YT:M:l:p:b:a:d:W:"
+		longargs = ["help", "detailedhelp", "version", "debug", "list-configs","chain=", "showsymbols",
+					"detail", "include=", "input=", "config-file=", "softunwindbound", "unwind=",
 					"unwind-while=", "unwind-for=", "--soft-unwind-max=",
 
 					#Verismart
@@ -507,7 +522,10 @@ def main():
 					#Backend
 					"stop-on-fail", "bounds-check", "div-by-zero-check", "pointer-check", "memory-leak-check",
 					"signed-overflow-check", "unsigned-overflow-check", "float-overflow-check", "nan-check",
-					"no-simplify", "refine-arrays", ] # <-- append module params here
+					"no-simplify", "refine-arrays",
+					
+					#DataRace
+					"--dr", "ww-datarace",] # <-- append module params here
 
 		# add one command-line parameter for each module-specific parameter
 		for p in cseqenv.params:
@@ -539,6 +557,8 @@ def main():
 		elif o in ("-L", "--list-configs"):
 			print(listmodulechains())
 			sys.exit()
+		elif o in ("-C", "--chain"):
+			continue
 		elif o in ("-S", "--showsymbols"):
 			cseqenv.showsymbols = True
 		elif o in ("-d", "--detail"):
@@ -650,6 +670,12 @@ def main():
 		elif o in ("--refine-arrays"):
 			cseqenv.refine_arrays = True
 			cseqenv.paramvalues[o[2:]] = True
+		
+		#Datarace
+		elif o in ("-W", "--ww-datarace"):
+			cseqenv.wwDatarace = True
+		elif o in ("--dr"):
+			cseqenv.enableDR = True
 
 		else:  # module-specific parameters
 			cseqenv.paramvalues[o[2:]] = a
