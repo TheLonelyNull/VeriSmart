@@ -507,9 +507,9 @@ def main():
 	""" II. Parameters """
 	"""                """
 	try:
-		shortargs = "hHvDLC:SdI:i:c:su:w:f:U:YT:M:l:p:b:a:d:W:"
+		shortargs = "hHvDLC:SdI:i:c:r:su:w:f:U:YT:M:l:p:b:a:d:W:"
 		longargs = ["help", "detailedhelp", "version", "debug", "list-configs","chain=", "showsymbols",
-					"detail", "include=", "input=", "config-file=", "softunwindbound", "unwind=",
+					"detail", "include=", "input=", "config-file=", "rounds=", "softunwindbound", "unwind=",
 					"unwind-while=", "unwind-for=", "--soft-unwind-max=",
 
 					#Verismart
@@ -571,7 +571,9 @@ def main():
 			cseqenv.automatic = False
 			cseqenv.config_file = a
 
-		#Unwind
+		elif o in ("-r", "--rounds"):
+			cseqenv.rounds = int(a)
+			cseqenv.paramvalues[o[2:]] = int(a)
 		elif o in ("-s", "--softunwindbound"):
 			cseqenv.softunwindbound = True
 			cseqenv.paramvalues[o[2:]] = True
