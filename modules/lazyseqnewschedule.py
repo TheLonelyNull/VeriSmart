@@ -604,8 +604,9 @@ class lazyseqnewschedule(core.module.Translator):
 		# Next three lines were formerly from visit_FuncCall
 		# This way we get the thread names in the order the thread definitions occour
 		self.__threadName.append(n.decl.name)
-		self.__threadCount = self.__threadCount + 1
 		self.__threadIndex[n.decl.name] = self.__threadCount
+		self.__threadCount = self.__threadCount + 1
+		
 
 		decl = self.visit(n.decl)
 		self.indent_level = 0
@@ -1387,12 +1388,12 @@ class lazyseqnewschedule(core.module.Translator):
 		main += "          unsigned int __cs_tmp_t%s_r0 %s;\n" % (self.__threadIndex['main'], self.__extra_nondet)
 		main += "          __cs_pc_cs[%s] = __cs_tmp_t%s_r0;\n" % (self.__threadIndex['main'], self.__threadIndex['main'])
 		main += "          __CSEQ_assume(__cs_pc_cs[%s] > 0);\n" % self.__threadIndex['main']
-		main += "          __CSEQ_assume(__cs_pc_cs[%s] <= %s);\n" % (self.__threadIndex['main'], "$MLM")
+		main += "          __CSEQ_assume(__cs_pc_cs[%s] <= %s);\n" % (self.__threadIndex['main'], "$ML" + str(self.__threadIndex['main']))
 		main += "          main_thread();\n"
 		main += "          __cs_pc[%s] = __cs_pc_cs[%s];\n" % (self.__threadIndex['main'], self.__threadIndex['main'])
 		main += "\n"
 		# Other threads
-		i = 1
+		i = 0
 		for t in self.__threadName:
 			if t == 'main': continue
 			if i <= self.__threadbound:
@@ -1419,7 +1420,7 @@ class lazyseqnewschedule(core.module.Translator):
 			else:
 				main += "             __cs_pc_cs[%s] = __cs_pc[%s] + __cs_tmp_t%s_r%s;\n" % (self.__threadIndex['main'], self.__threadIndex['main'], self.__threadIndex['main'], round)
 			main += "             __CSEQ_assume(__cs_pc_cs[%s] >= __cs_pc[%s]);\n" % (self.__threadIndex['main'], self.__threadIndex['main'])
-			main += "             __CSEQ_assume(__cs_pc_cs[%s] <= %s);\n" % (self.__threadIndex['main'], "$MLM")
+			main += "             __CSEQ_assume(__cs_pc_cs[%s] <= %s);\n" % (self.__threadIndex['main'], "$ML" + str(self.__threadIndex['main']))
 			main += "             main_thread();\n"
 			main += "             __cs_pc[%s] = __cs_pc_cs[%s];\n" % (self.__threadIndex['main'], self.__threadIndex['main'])
 			main += "          }\n\n"
@@ -1457,7 +1458,7 @@ class lazyseqnewschedule(core.module.Translator):
 		else:
 			main += "             __cs_pc_cs[%s] = __cs_pc[%s] + __cs_tmp_t%s_r%s;\n" % (self.__threadIndex['main'], self.__threadIndex['main'], self.__threadIndex['main'], ROUNDS)
 		main += "             __CSEQ_assume(__cs_pc_cs[%s] >= __cs_pc[%s]);\n" % (self.__threadIndex['main'], self.__threadIndex['main'])
-		main += "             __CSEQ_assume(__cs_pc_cs[%s] <= %s);\n" % (self.__threadIndex['main'], "$MLM")
+		main += "             __CSEQ_assume(__cs_pc_cs[%s] <= %s);\n" % (self.__threadIndex['main'], "$ML" + str(self.__threadIndex['main']))
 		main += "             main_thread();\n"
 		main += "           }\n"
 		main += "    return 0;\n"
@@ -1498,7 +1499,7 @@ class lazyseqnewschedule(core.module.Translator):
 		main +="          unsigned int __cs_tmp_t%s_r0 %s;\n" % (self.__threadIndex['main'], self.__extra_nondet)
 		main +="          __cs_pc_cs[%s] = __cs_tmp_t%s_r0;\n" % (self.__threadIndex['main'], self.__threadIndex['main'])
 		main +="          __CSEQ_assume(__cs_pc_cs[%s] > 0);\n" % self.__threadIndex['main']
-		main +="          __CSEQ_assume(__cs_pc_cs[%s] <= %s);\n" % (self.__threadIndex['main'], '$MLM')
+		main +="          __CSEQ_assume(__cs_pc_cs[%s] <= %s);\n" % (self.__threadIndex['main'], "$ML" + str(self.__threadIndex['main']))
 		main +="          if(__cs_dr_ts == 0) __cs_dataraceDetectionStarted=1;\n"
 		main +="          __cs_main_thread();\n"
 		main +="          if(__cs_dataraceDetectionStarted) __cs_dataraceSecondThread=1;\n"  #DR
@@ -1546,7 +1547,7 @@ class lazyseqnewschedule(core.module.Translator):
 			else:
 				main +="             __cs_pc_cs[%s] = __cs_pc[%s] + __cs_tmp_t%s_r%s;\n" % (self.__threadIndex['main'], self.__threadIndex['main'], self.__threadIndex['main'], round)
 			main +="             __CSEQ_assume(__cs_pc_cs[%s] >= __cs_pc[%s]);\n" % (self.__threadIndex['main'], self.__threadIndex['main'])
-			main +="             __CSEQ_assume(__cs_pc_cs[%s] <= %s);\n" % (self.__threadIndex['main'], '$MLM')
+			main +="             __CSEQ_assume(__cs_pc_cs[%s] <= %s);\n" % (self.__threadIndex['main'], "$ML" + str(self.__threadIndex['main']))
 			if ts <= maxts :   #DR
 				main +="             if(__cs_dr_ts == %s) __cs_dataraceDetectionStarted=1;\n" % ts  #DR
 			main +="             __cs_main_thread();\n"

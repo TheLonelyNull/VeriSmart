@@ -32,9 +32,10 @@ class loopAnalysis(core.module.Translator):
 		self.__lines = self.getInputParamValue('lines')
 		self.__threadName = self.getInputParamValue('threadNames')
 		self.__threadIndex = self.getInputParamValue('threadIndex')
-
 		self.__threadNum = len(self.__threadName)
 
+		#print(self.__threadName)
+		#sys.exit()
 
 
 		cs = "Number of context-switch of each thread:"
@@ -207,18 +208,16 @@ class loopAnalysis(core.module.Translator):
 		return i, output
 
 	def substituteMainDriver(self, maxlabels, mainDriver):
-		listreversed = list(self.__threadName)
-		listreversed.insert(0, listreversed[len(listreversed)-1])
-		listreversed.pop(len(listreversed)-1)
+		#listreversed = list(self.__threadName)
+		#listreversed.insert(0, listreversed[len(listreversed)-1])
+		#listreversed.pop(len(listreversed)-1)
 		output = ''
 		i = 0
 		#Implementare per quando ci sono piu di 9 thread
 		while i < len(mainDriver):
 			if mainDriver[i] == '$':
 				numthread = mainDriver[i+3]
-				if numthread == 'M':
-					numthread = 0
-				tname = listreversed[int(numthread)]
+				tname = self.__threadName[int(numthread)]
 				if tname == 'main':
 					tname = 'main_thread'
 				maxthreadlabel = maxlabels[tname]
@@ -311,7 +310,7 @@ class loopAnalysis(core.module.Translator):
 				output[0] = self.substituteThreadLines(output[0], maxlabels)
 			instanceGenerated = ''.join(t for t in output)
 			#with open("test.c", 'w') as fd:
-				#fd.write(instanceGenerated)
+			#	fd.write(instanceGenerated)
 			#sys.exit()
 			yield instanceGenerated, configNumber, configintervals
 
