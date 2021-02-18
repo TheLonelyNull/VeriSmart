@@ -20,6 +20,8 @@ class loopAnalysis(core.module.Translator):
 
 	__threadName = []  # NEW: name of threads, as they are found in code
 
+	__threadNum = 0
+
 	__threadIndex = {}  # index of the thread = value of threadcount when the pthread_create to that thread was discovered
 
 	def init(self):
@@ -30,6 +32,9 @@ class loopAnalysis(core.module.Translator):
 		self.__lines = self.getInputParamValue('lines')
 		self.__threadName = self.getInputParamValue('threadNames')
 		self.__threadIndex = self.getInputParamValue('threadIndex')
+
+		self.__threadNum = len(self.__threadName)
+
 
 
 		cs = "Number of context-switch of each thread:"
@@ -144,7 +149,7 @@ class loopAnalysis(core.module.Translator):
 			self.printIsSafe(totaltime, env.inputfile, env.isSwarm)
 		return
 
-	def substitute(self, seqCode, list, tName, startIndex):
+	def substitute(self, seqCode, list, tName, startIndex, maxlabels):
 		self.__threadIndex["main_thread"] = self.__threadIndex["main"]
 		if tName == 'main':
 			tName = 'main_thread'
@@ -195,10 +200,45 @@ class loopAnalysis(core.module.Translator):
 					output.append(s)
 					i += 2
 					done = True
+					maxlabels[tName] = count
 			else:
 				i += 1
 		del self.__threadIndex["main_thread"]
 		return i, output
+
+	def substituteMainDriver(self, maxlabels, mainDriver):
+		listreversed = list(self.__threadName)
+		listreversed.insert(0, listreversed[len(listreversed)-1])
+		listreversed.pop(len(listreversed)-1)
+		output = ''
+		i = 0
+		#Implementare per quando ci sono piu di 9 thread
+		while i < len(mainDriver):
+			if mainDriver[i] == '$':
+				numthread = mainDriver[i+3]
+				if numthread == 'M':
+					numthread = 0
+				tname = listreversed[int(numthread)]
+				if tname == 'main':
+					tname = 'main_thread'
+				maxthreadlabel = maxlabels[tname]
+				output += str(maxthreadlabel)
+				i+=4
+			else:
+				output += mainDriver[i]
+				i+=1
+		return output
+
+	def substituteThreadLines(self, seqcode, maxlabels):
+		threadsize = ""
+		numthread = 0
+		for i in maxlabels:
+			threadsize += " %s" % maxlabels[i]
+			if numthread < self.__threadNum-1:
+				threadsize += ","
+				numthread+=1
+		output = seqcode.replace("$THREADSIZE", threadsize)
+		return output
 
 	def generateConfigIterator(self, env, lines, configfile, inputfile, percentage):
 		if percentage and env.isSwarm:
@@ -249,21 +289,30 @@ class loopAnalysis(core.module.Translator):
 		if env.config_only:
 			sys.exit(0)
 		for config in configIterator:
-			with open(config[0], "r") as config:
+			with open(config[0], "r") as config:		
+				maxlabels = {}
 				jsonConfig = (json.load(config))
 				configNumber, configintervals = dict(jsonConfig).popitem()
 				output = []
 				i = 0
 				startIndex = 0
-				while i < len(self.__threadName):
+				headerEnd = 0
+				while i < len(self.__threadName):	
 					tName = self.__threadName[i]
 					startIndex, l = self.substitute(
-						seqCode, configintervals[tName], tName, startIndex)
+						seqCode, configintervals[tName], tName, startIndex, maxlabels)
+					if headerEnd == 0:
+						headerEnd = startIndex
 					listToStr = ''.join(s for s in l)
 					output.append(listToStr)
 					i += 1
-				output.append(seqCode[startIndex:])
+				maindriver = self.substituteMainDriver(maxlabels, seqCode[startIndex:])
+				output.append(maindriver)
+				output[0] = self.substituteThreadLines(output[0], maxlabels)
 			instanceGenerated = ''.join(t for t in output)
+			#with open("test.c", 'w') as fd:
+				#fd.write(instanceGenerated)
+			#sys.exit()
 			yield instanceGenerated, configNumber, configintervals
 
 	def backendChain(self, env, instance, confignumber, configintervals, swarmdirname, filename):

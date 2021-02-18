@@ -1,17 +1,15 @@
 """ CSeq backend instrumentation module
     written by Omar Inverso, Truc Nguyen Lam, University of Southampton.
+    adapted to data race detection by translating CSEQ_assert added in the translation 
+    to verifier-specific assume
 """
-import os
-
-from bin import utils
-
 VERSION = 'instrumenter-0.1-2016.08.09'
 # VERSION = 'instrumenter-0.0-2015.07.15'
 # VERSION = 'instrumenter-0.0-2015.07.09'
 #VERSION = 'instrumenter-0.0-2015.06.25'
 """
     Transformation 1 (convert function calls and add implementation):
-        __CSEQ_assert()   -->   verifier-specific assert
+        __CSEQ_assert()   -->   verifier-specific assume  (assert are removed for datarace detection) 
         __CSEQ_assume()   -->   verifier-specific assume
 
     Transformation 2 (convert bitvectors)
@@ -60,8 +58,8 @@ _backends = ['cbmc', 'esbmc', 'llbmc', 'blitz', 'satabs',
 fmap = {}
 
 fmap['cbmc', '__CSEQ_assume'] = '__CPROVER_assume'
-fmap['cbmc', '__CSEQ_assertext'] = '__CPROVER_assert'
-fmap['cbmc', '__CSEQ_assert'] = 'assert'
+fmap['cbmc', '__CSEQ_assertext'] = '__CPROVER_assume'
+fmap['cbmc', '__CSEQ_assert'] = '__CPROVER_assume'
 fmap['cbmc', '__CSEQ_nondet_int'] = 'nondet_int'
 fmap['cbmc', '__CSEQ_nondet_uint'] = 'nondet_uint'
 fmap['cbmc', '__CSEQ_nondet_bool'] = 'nondet_bool'
@@ -69,8 +67,8 @@ fmap['cbmc', '__CSEQ_nondet_char'] = 'nondet_char'
 fmap['cbmc', '__CSEQ_nondet_uchar'] = 'nondet_uchar'
 
 fmap['esbmc', '__CSEQ_assume'] = '__ESBMC_assume'
-fmap['esbmc', '__CSEQ_assertext'] = '__ESBMC_assert'
-fmap['esbmc', '__CSEQ_assert'] = 'assert'
+fmap['esbmc', '__CSEQ_assertext'] = '__ESBMC_assume'
+fmap['esbmc', '__CSEQ_assert'] = '__ESBMC_assume'
 fmap['esbmc', '__CSEQ_nondet_int'] = '__VERIFIER_nondet_int'
 fmap['esbmc', '__CSEQ_nondet_uint'] = '__VERIFIER_nondet_uint'
 fmap['esbmc', '__CSEQ_nondet_bool'] = '__VERIFIER_nondet_bool'
@@ -78,8 +76,8 @@ fmap['esbmc', '__CSEQ_nondet_char'] = '__VERIFIER_nondet_char'
 fmap['esbmc', '__CSEQ_nondet_uchar'] = '__VERIFIER_nondet_uchar'
 
 fmap['llbmc', '__CSEQ_assume'] = '__llbmc_assume'
-fmap['llbmc', '__CSEQ_assertext'] = '__llbmc_assert'
-fmap['llbmc', '__CSEQ_assert'] = '__llbmc_assert'
+fmap['llbmc', '__CSEQ_assertext'] = '__llbmc_assume'
+fmap['llbmc', '__CSEQ_assert'] = '__llbmc_assume'
 fmap['llbmc', '__CSEQ_nondet_int'] = 'nondet_int'
 fmap['llbmc', '__CSEQ_nondet_uint'] = 'nondet_int'
 fmap['llbmc', '__CSEQ_nondet_bool'] = 'nondet_bool'
@@ -87,8 +85,8 @@ fmap['llbmc', '__CSEQ_nondet_char'] = 'nondet_char'
 fmap['llbmc', '__CSEQ_nondet_uchar'] = 'nondet_uchar'
 
 fmap['blitz', '__CSEQ_assume'] = '__CPROVER_assume'
-fmap['blitz', '__CSEQ_assertext'] = 'assert'
-fmap['blitz', '__CSEQ_assert'] = 'assert'
+fmap['blitz', '__CSEQ_assertext'] = '__CPROVER_assume'
+fmap['blitz', '__CSEQ_assert'] = '__CPROVER_assume'
 fmap['blitz', '__CSEQ_nondet_int'] = 'nondet_int'
 fmap['blitz', '__CSEQ_nondet_uint'] = 'nondet_uint'
 fmap['blitz', '__CSEQ_nondet_bool'] = 'nondet_bool'
@@ -96,8 +94,8 @@ fmap['blitz', '__CSEQ_nondet_char'] = 'nondet_char'
 fmap['blitz', '__CSEQ_nondet_uchar'] = 'nondet_uchar'
 
 fmap['satabs', '__CSEQ_assume'] = '__CPROVER_assume'
-fmap['satabs', '__CSEQ_assertext'] = 'assert'
-fmap['satabs', '__CSEQ_assert'] = 'assert'
+fmap['satabs', '__CSEQ_assertext'] = '__CPROVER_assume'
+fmap['satabs', '__CSEQ_assert'] = '__CPROVER_assume'
 fmap['satabs', '__CSEQ_nondet_int'] = 'nondet_int'
 fmap['satabs', '__CSEQ_nondet_uint'] = 'nondet_uint'
 fmap['satabs', '__CSEQ_nondet_bool'] = 'nondet_bool'
@@ -111,8 +109,8 @@ fmap['satabs', '__CSEQ_nondet_uchar'] = 'nondet_uchar'
 # fmap['2ls', '__CSEQ_nondet_uint'] = 'nondet_uint'
 
 fmap['klee', '__CSEQ_assume'] = 'KLEE_assume'
-fmap['klee', '__CSEQ_assertext'] = 'KLEE_assert'
-fmap['klee', '__CSEQ_assert'] = 'KLEE_assert'
+fmap['klee', '__CSEQ_assertext'] = 'KLEE_assume'
+fmap['klee', '__CSEQ_assert'] = 'KLEE_assume'
 fmap['klee', '__CSEQ_nondet_int'] = 'KLEE_nondet_int'
 fmap['klee', '__CSEQ_nondet_uint'] = 'KLEE_nondet_uint'
 fmap['klee', '__CSEQ_nondet_bool'] = 'KLEE_nondet_bool'
@@ -120,8 +118,8 @@ fmap['klee', '__CSEQ_nondet_char'] = 'KLEE_nondet_char'
 fmap['klee', '__CSEQ_nondet_uchar'] = 'KLEE_nondet_uchar'
 
 fmap['cpachecker', '__CSEQ_assume'] = '__VERIFIER_assume'
-fmap['cpachecker', '__CSEQ_assertext'] = '__VERIFIER_assert'
-fmap['cpachecker', '__CSEQ_assert'] = '__VERIFIER_assert'
+fmap['cpachecker', '__CSEQ_assertext'] = '__VERIFIER_assume'
+fmap['cpachecker', '__CSEQ_assert'] = '__VERIFIER_assume'
 fmap['cpachecker', '__CSEQ_nondet_int'] = '__VERIFIER_nondet_int'
 fmap['cpachecker', '__CSEQ_nondet_uint'] = '__VERIFIER_nondet_uint'
 fmap['cpachecker', '__CSEQ_nondet_bool'] = '__VERIFIER_nondet_bool'
@@ -129,8 +127,8 @@ fmap['cpachecker', '__CSEQ_nondet_char'] = '__VERIFIER_nondet_char'
 fmap['cpachecker', '__CSEQ_nondet_uchar'] = '__VERIFIER_nondet_uchar'
 
 fmap['framac', '__CSEQ_assume'] = '__FRAMAC_assume'
-fmap['framac', '__CSEQ_assertext'] = '__FRAMAC_assert'
-fmap['framac', '__CSEQ_assert'] = '__FRAMAC_assert'
+fmap['framac', '__CSEQ_assertext'] = '__FRAMAC_assume'
+fmap['framac', '__CSEQ_assert'] = '__FRAMAC_assume'
 fmap['framac', '__CSEQ_nondet_int'] = '__VERIFIER_nondet_int'
 fmap['framac', '__CSEQ_nondet_uint'] = '__VERIFIER_nondet_uint'
 fmap['framac', '__CSEQ_nondet_bool'] = '__VERIFIER_nondet_bool'
@@ -138,8 +136,8 @@ fmap['framac', '__CSEQ_nondet_char'] = '__VERIFIER_nondet_char'
 fmap['framac', '__CSEQ_nondet_uchar'] = '__VERIFIER_nondet_uchar'
 
 fmap['uautomizer', '__CSEQ_assume'] = '__VERIFIER_assume'
-fmap['uautomizer', '__CSEQ_assertext'] = '__VERIFIER_assert'
-fmap['uautomizer', '__CSEQ_assert'] = '__VERIFIER_assert'
+fmap['uautomizer', '__CSEQ_assertext'] = '__VERIFIER_assume'
+fmap['uautomizer', '__CSEQ_assert'] = '__VERIFIER_assume'
 fmap['uautomizer', '__CSEQ_nondet_int'] = '__VERIFIER_nondet_int'
 fmap['uautomizer', '__CSEQ_nondet_uint'] = '__VERIFIER_nondet_uint'
 fmap['uautomizer', '__CSEQ_nondet_bool'] = '__VERIFIER_nondet_bool'
@@ -147,8 +145,8 @@ fmap['uautomizer', '__CSEQ_nondet_char'] = '__VERIFIER_nondet_char'
 fmap['uautomizer', '__CSEQ_nondet_uchar'] = '__VERIFIER_nondet_uchar'
 
 fmap['smack', '__CSEQ_assume'] = '__VERIFIER_assume'
-fmap['smack', '__CSEQ_assertext'] = '__VERIFIER_assert'
-fmap['smack', '__CSEQ_assert'] = '__VERIFIER_assert'
+fmap['smack', '__CSEQ_assertext'] = '__VERIFIER_assume'
+fmap['smack', '__CSEQ_assert'] = '__VERIFIER_assume'
 fmap['smack', '__CSEQ_nondet_int'] = '__VERIFIER_nondet_int'
 fmap['smack', '__CSEQ_nondet_uint'] = '__VERIFIER_nondet_uint'
 fmap['smack', '__CSEQ_nondet_bool'] = '__VERIFIER_nondet_bool'
@@ -159,7 +157,7 @@ _maxrightindent = 40   # max columns right for non-raw lines
 _rawlinemarker = '__CSEQ_removeindent'
 
 
-class instrumenter(core.module.Translator):
+class dr_instrumenter(core.module.Translator):
     __visiting_struct = False
     __struct_stack = []               # stack of struct name
     __svcomp = False
@@ -169,11 +167,6 @@ class instrumenter(core.module.Translator):
     __ignore_list = []
     __bit_pthread = False
 
-    __swarmdirname = ""
-    __filename = ""
-    __confignumber = ""
-
-
     def init(self):
         self.addInputParam('backend','backend to use for analysis, available choices are:\n  bounded model-checkers: (blitz, cbmc, esbmc, llbmc, smack)\n  abstraction-based: (cpachecker, satabs, uautomizer, framac)\n  testing: (klee)','b','cbmc',False)
         self.addInputParam('bitwidth','custom bidwidths for integers','w',None,True)
@@ -181,15 +174,11 @@ class instrumenter(core.module.Translator):
         self.addInputParam('svcomp', 'extra instrumentation for SVCOMP', '', None, True)
         self.addInputParam('roundint', 'round to integer built-in types', '', None, True)
         self.addInputParam('bit-pthread', 'set bit vector for pthread types', '', None, True)
+        self.addInputParam('threads', 'max no. of thread creations (0 = auto)', 't', '0', False)
 
-    def setInstanceInfo(self, swarmdirname, filename, confignumber):
-        self.__swarmdirname = swarmdirname
-        self.__filename = filename
-        self.__confignumber = confignumber
 
     def loadfromstring(self,string,env):
         self.env = env
-
 
         self.backend = self.getInputParamValue('backend')
         self.bitwidths = self.getInputParamValue('bitwidth')
@@ -246,6 +235,8 @@ class instrumenter(core.module.Translator):
         self.output = newstring
 
         self.insertheader(self.extheader)          # header passed by previous module
+        if self.env.local == 1: 
+            self.insertheader("#include <string.h>")  #S needed for memcpy in local init #1
 
         # linearizability instrumentation
         liheaderfile = self.getInputParamValue("liheader")
@@ -270,19 +261,17 @@ class instrumenter(core.module.Translator):
             self.insertheader(core.utils.printFile('modules/cbmc_extra.c'))
         elif self.backend == 'smack':
             self.insertheader(core.utils.printFile('modules/smack_extra.c'))
+           
+        if self.env.paths: 
+           self.insertheader(core.utils.printFile('modules/cbmc_extra_paths.c'))
 
         # Insert external 'system' header if there are (from the file)
         if hasattr(self.env, "systemheaders"):
             self.insertheader(getattr(self.env, "systemheaders"))
-
+        
         self.insertheader(core.utils.printFile('modules/pthread_defs.c'))
 
         self.insertheader(self._generateheader())  # top comment with translation parameters
-
-        if env.isSwarm:
-            filename = self.__swarmdirname + "_cs_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
-            os.makedirs(os.path.dirname(filename), exist_ok=True)
-            utils.saveFile(filename, self.output)
 
 
     def _get_type_by_bits(self, numbit):
@@ -344,7 +333,7 @@ class instrumenter(core.module.Translator):
                                     break
                             s = " ".join(temp)
                 else:
-                    currentFunct = self.currentFunct if self.currentFunct != 'main_thread' else 'main'
+                    currentFunct = self.currentFunct if self.currentFunct != '__cs_main_thread' else 'main'
                     if s.startswith("unsigned int ") and (currentFunct,n.name) in self.bitwidths:
                         if (self.__roundint
                                 # not (n.name in self.__ignore_list or
@@ -396,26 +385,38 @@ class instrumenter(core.module.Translator):
                 s += ' = ' + ninitextra + '(' + self.visit(n.init) + ')'
         return s
 
-    def _generate_struct_union(self, n, name):
-        """ Generates code for structs and unions. name should be either
-            'struct' or union.
+    def _generate_struct_union_enum(self, n, name):
+        """ Generates code for structs, unions and enum. name should be either
+            'struct' or 'union' or 'enum'.
         """
-        s = name + ' ' + (n.name or '')
+        s = name + ' ' + (n.name or '')  #S original code
         # There should be no anonymous struct, handling in workarounds module
         self.__visiting_struct = True
         if n.name:
             self.__struct_stack.append(n.name)
-        if n.decls:
+        #S original code START
+        if name in ('struct', 'union'):
+            members = n.decls
+            body_function = self._generate_struct_union_body
+        else:
+            assert name == 'enum'
+            members = None if n.values is None else n.values.enumerators
+            body_function = self._generate_enum_body
+        s = name + ' ' + (n.name or '')
+        if members is not None:
+            # None means no members
+            # Empty sequence means an empty list of members
             s += '\n'
             s += self._make_indent()
             self.indent_level += 2
             s += '{\n'
-            for decl in n.decls:
-                s += self._generate_stmt(decl)
+            s += body_function(members)
             self.indent_level -= 2
             s += self._make_indent() + '}'
+        #S original code END
         self.__visiting_struct = False
-        self.__struct_stack.pop()
+        if n.name:
+           self.__struct_stack.pop()
         return s
 
     def visit_Typedef(self, n):
@@ -477,7 +478,14 @@ class instrumenter(core.module.Translator):
                 self.backend == 'framac'
             ):
             return '__FRAMAC_assert(0)'
-
+        #POR start
+        ts = (int(self.getInputParamValue('rounds'))+1) * int(self.getInputParamValue('threads')+1)
+        if fref == '__CPROVER_field_decl':
+                args = self.visit(n.args.exprs[0])
+                if (args == "\"ts_read\"" or
+                    args == "\"ts_write\""):
+                    args += ", (unsigned __CPROVER_bitvector[%d]) 0" % (math.ceil(math.log(ts,2)))
+        #POR end
         return fref + '(' + args + ')'
 
     def _generateheader(self):
@@ -519,4 +527,3 @@ class instrumenter(core.module.Translator):
 
         h += ' */\n'
         return h
-

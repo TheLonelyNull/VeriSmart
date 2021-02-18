@@ -150,7 +150,7 @@ class cseqenv:
 	#DR
 	enableDR = False
 	wwDatarace = False    # True if requires that write-write datarace are on different written values
-
+	local = 2
 	inlineInfix = '$$$$'  # S: placeholder to insert counter value in function inlining, see varname.py and inliner.py
 
 def parseChainCommand(s):
@@ -507,7 +507,7 @@ def main():
 	""" II. Parameters """
 	"""                """
 	try:
-		shortargs = "hHvDLC:SdI:i:c:r:su:w:f:U:YT:M:l:p:b:a:d:W:"
+		shortargs = "hHvDLC:SdI:i:c:r:su:w:f:U:YT:M:l:p:b:a:d:W"
 		longargs = ["help", "detailedhelp", "version", "debug", "list-configs","chain=", "showsymbols",
 					"detail", "include=", "input=", "config-file=", "rounds=", "softunwindbound", "unwind=",
 					"unwind-while=", "unwind-for=", "--soft-unwind-max=",
@@ -525,7 +525,7 @@ def main():
 					"no-simplify", "refine-arrays",
 					
 					#DataRace
-					"--dr", "ww-datarace",] # <-- append module params here
+					"dr", "ww-datarace","local-vars="] # <-- append module params here
 
 		# add one command-line parameter for each module-specific parameter
 		for p in cseqenv.params:
@@ -678,6 +678,8 @@ def main():
 			cseqenv.wwDatarace = True
 		elif o in ("--dr"):
 			cseqenv.enableDR = True
+		elif o in ("--local-vars"):
+			cseqenv.local = int(a)
 
 		else:  # module-specific parameters
 			cseqenv.paramvalues[o[2:]] = a
