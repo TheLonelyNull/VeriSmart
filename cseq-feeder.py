@@ -76,6 +76,7 @@ class cseqenv:
 	cex_dir = ""				
 	witness = ""
 	seq_only = False
+	instances_only = False
 	backend = "cbmc"
 	depth = 0							# backend depth bound (if supported by backend, default: no bound)
 	error_label = "ERROR"
@@ -105,7 +106,7 @@ class cseqenv:
 	isSwarm = False
 	cores = 4
 	show_cs = False 					# show number of context switches for each thread
-	config_file = ""					# TODO swarm verification with manual tiling configuration file
+	config_file = ""					# swarm verification with manual tiling configuration file
 	initial_timeout = 3600 				 
 	automatic = True
 	instances_limit = 100
@@ -197,7 +198,7 @@ def usage(cmd, errormsg, showhelp=True, detail=False, isSwarm=False):
 		print("   -c,--config-file<X>               swarm verification with manual tiling configuration file")
 		#print("   -c,--config-file<X>              use given tiling configuration file")
 		#print("   --seq-only                       only generate sequentialized program")
-		#print("   --instances-only                 only generate tiled and sequentialized program instances")
+		print("   --instances-only                  only generate tiled and sequentialized program instances")
 		print("   --exit-on-error                   exit on first error found by one of instances")	
 		print("   --cores<X>                        number of sub-processes spawned in parallel for instance generation and verification (default: 4)")
 		print("   --instances-limit<X>              limit the number of generated instances (default: 100, use 0 to unlimit)")
@@ -285,6 +286,10 @@ def usage(cmd, errormsg, showhelp=True, detail=False, isSwarm=False):
 		print("   --no-simplify                     no simplification from cbmc (optional)")
 		print("   --refine-arrays                   array refinement from cbmc (optional)")
 		print("   --overflow-check                  enable arithmetic over- and underflow check (optional)")
+		print("data race option:")
+		print("   --dr                              enable data race detection")
+		print("   -W,--wwDatarace                   requires that write-write datarace are on different written values")
+		print("   --local-vars                      0 for init with malloc, 1 wih memcopy, 2 with nondet-static option")
 		# Module-specific params for the given chain (or for the default one)
 		print("")
 		print("module options:")
@@ -362,7 +367,7 @@ def main():
 	cseqenv.starttime = time.time()    # save wall time
 
 	# Extract the configuration from the command-line or set it to the default.
-	if "--dr " in cseqenv.cmdline:
+	if " --dr " in cseqenv.cmdline:
 		cseqenv.chainfile = "modules/%s.chain" % core.utils.extractparamvalue(cseqenv.cmdline, "-C", "--chain", core.config.defaultDRchain)
 	else:
 		cseqenv.chainfile = "modules/%s.chain" % core.utils.extractparamvalue(cseqenv.cmdline, "-C", "--chain", core.config.defaultchain)
@@ -515,7 +520,8 @@ def main():
 					#Verismart
 					"vs", "contextswitch", "suffix=", "config-only", "cores=", "timelimit=", "memorylimit=",
 					"window-length=", "window-percent=", "picked-window=", "shift-window", "instances-limit=",
-					
+					"instances-only",
+
 					"exit-on-error", "backend=", "backend-path=", "backend-clang-path=", "extra-args=",
 					"depth=", "timeout=", "cex", "cex-dir=",
 
@@ -525,7 +531,7 @@ def main():
 					"no-simplify", "refine-arrays",
 					
 					#DataRace
-					"dr", "ww-datarace","local-vars="] # <-- append module params here
+					"dr", "ww-datarace", "local-vars="]
 
 		# add one command-line parameter for each module-specific parameter
 		for p in cseqenv.params:
@@ -616,6 +622,8 @@ def main():
 			cseqenv.shifted_window = True
 		elif o in ("--instances-limit"):
 			cseqenv.instances_limit = int(a)
+		elif o in ("--instances-only"):
+			cseqenv.instances_only = True	
 		
 		elif o in ("--exit-on-error"):
 			cseqenv.exit_on_error = True
@@ -639,6 +647,7 @@ def main():
 		elif o in ("--cex-dir"):
 			cseqenv.cex_dir = a
 		
+		#CBMC Backend
 		elif o in ("--stop-on-fail "):
 			cseqenv.stop_on_fail = True
 			cseqenv.paramvalues[o[2:]] = True

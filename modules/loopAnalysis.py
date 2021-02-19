@@ -16,11 +16,11 @@ def start_process():
 
 
 class loopAnalysis(core.module.Translator):
-	__lines = {}  # lines for each thread
+	__lines = {}  			# cs for each thread
 
-	__threadName = []  # NEW: name of threads, as they are found in code
+	__threadName = [] 		# NEW: name of threads, as they are found in code
 
-	__threadNum = 0
+	__threadbound = 0		# number of threads
 
 	__threadIndex = {}  # index of the thread = value of threadcount when the pthread_create to that thread was discovered
 
@@ -32,11 +32,7 @@ class loopAnalysis(core.module.Translator):
 		self.__lines = self.getInputParamValue('lines')
 		self.__threadName = self.getInputParamValue('threadNames')
 		self.__threadIndex = self.getInputParamValue('threadIndex')
-		self.__threadNum = len(self.__threadName)
-
-		#print(self.__threadName)
-		#sys.exit()
-
+		self.__threadBound = len(self.__threadName)
 
 		cs = "Number of context-switch of each thread:"
 		for t in self.__lines:
@@ -87,9 +83,10 @@ class loopAnalysis(core.module.Translator):
 			if pool_size == 0:
 				print("0 processes created.")
 				sys.exit(0)
-			print("Analyzing instance(s) with " + str(env.initial_timeout) + "s timeout for " + str(
+			if not env.instances_only:
+				print("Analyzing instance(s) with " + str(env.initial_timeout) + "s timeout for " + str(
 				pool_size) + " processes")
-			print("======================================================")
+				print("======================================================")
 		else:
 			pool_size = 1
 
@@ -134,6 +131,11 @@ class loopAnalysis(core.module.Translator):
 
 		pool.close()
 		pool.join()
+
+		if env.instances_only:
+			print("Instances generated in " + swarmdirname)
+			sys.exit(0)
+
 		if not foundbug:
 			while not results.empty():
 				out = results.get()
@@ -208,9 +210,6 @@ class loopAnalysis(core.module.Translator):
 		return i, output
 
 	def substituteMainDriver(self, maxlabels, mainDriver):
-		#listreversed = list(self.__threadName)
-		#listreversed.insert(0, listreversed[len(listreversed)-1])
-		#listreversed.pop(len(listreversed)-1)
 		output = ''
 		i = 0
 		#Implementare per quando ci sono piu di 9 thread
@@ -233,7 +232,7 @@ class loopAnalysis(core.module.Translator):
 		numthread = 0
 		for i in maxlabels:
 			threadsize += " %s" % maxlabels[i]
-			if numthread < self.__threadNum-1:
+			if numthread < self.__threadBound - 1:
 				threadsize += ","
 				numthread+=1
 		output = seqcode.replace("$THREADSIZE", threadsize)
@@ -309,14 +308,9 @@ class loopAnalysis(core.module.Translator):
 				output.append(maindriver)
 				output[0] = self.substituteThreadLines(output[0], maxlabels)
 			instanceGenerated = ''.join(t for t in output)
-			#with open("test.c", 'w') as fd:
-			#	fd.write(instanceGenerated)
-			#sys.exit()
 			yield instanceGenerated, configNumber, configintervals
 
 	def backendChain(self, env, instance, confignumber, configintervals, swarmdirname, filename):
-		env.intervals = configintervals
-		initalTimeout = env.initial_timeout
 		output = instance
 		analysistime = time.time()
 		for env.transforms, m in enumerate(env.backendmodules):
@@ -324,9 +318,13 @@ class loopAnalysis(core.module.Translator):
 				if env.debug:
 					print("/* " + m.getname())
 				m.initParams(env)
-				m.setInstanceInfo(swarmdirname, filename, confignumber)
+				m.setInstanceInfo(swarmdirname, filename, confignumber, configintervals)
 				m.loadfromstring(output, env)
 				output = m.getoutput()
+
+				#Exit on instrumenter (to find a better way)
+				if env.instances_only:
+					return True
 
 				# linemapping only works on Translator (C-to-C) modules
 				if "inputtooutput" in dir(m):
