@@ -168,21 +168,28 @@ class loopAnalysis(core.module.Translator):
 		while (i < len(seqCode) and not done):
 			if seqCode[i] == '$':
 				if seqCode[i + 1] == 'I':
+				# First statement of thread
 					if count == 0:
 						s = seqCode[j:i] + '__CSEQ_rawline("IF(%s,%s,t%s_%s)");' % (
 							self.__threadIndex[tName], count, tName, count + 1)
 						output.append(s)
 						count += 1
 						i += 2
+				# Context switch counted
 					elif ICount in cRange:
-						s = seqCode[j:i] + '__CSEQ_rawline("t%s_%s: IF(%s,%s,t%s_%s)");' % (
-							tName, count, self.__threadIndex[tName], count, tName, count + 1)
-						output.append(s)
+						#s = seqCode[j:i] + '__CSEQ_rawline("t%s_%s: IF(%s,%s,t%s_%s)");' % (
+						#	tName, count, self.__threadIndex[tName], count, tName, count + 1)
+						s1 = seqCode[j:i] + '__CSEQ_rawline("t%s_%s:");'% (tName, count)
+						s2 = '__CSEQ_rawline("IF(%s,%s,t%s_%s)");' % (self.__threadIndex[tName], count, tName, count + 1)
+						#output.append(s)
+						output.append(s1)
+						output.append(s2)
 						count += 1
 						i += 2
 						if ICount == list[iList][1] and iList < len(list) - 1:
 							iList += 1
 							cRange = range(list[iList][0], list[iList][1] + 1)
+				# Context switch not counted
 					else:
 						if seqCode[j:i] != '':
 							output.append(seqCode[j:i])
@@ -190,16 +197,16 @@ class loopAnalysis(core.module.Translator):
 						i += 2
 					j = i
 					ICount += 1
+				# Guard label
 				elif seqCode[i + 1] == 'G':
 					s = seqCode[j:i] + '__CSEQ_assume( __cs_pc_cs[%s] >= %s );' % (
 						self.__threadIndex[tName], count)
 					output.append(s)
 					i += 2
 					j = i
-				# F
+				# Last statement of thread
 				else:
-					s = seqCode[j:i] + \
-						'__CSEQ_rawline("t%s_%s: ");' % (tName, count)
+					s = seqCode[j:i] + '__CSEQ_rawline("t%s_%s: ");' % (tName, count)
 					output.append(s)
 					i += 2
 					done = True
