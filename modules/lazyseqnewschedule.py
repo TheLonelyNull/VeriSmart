@@ -489,9 +489,9 @@ class lazyseqnewschedule(core.module.Translator):
 						threadIndex = self.__threadIndex[self.__currentThread]
 						if self.__enableDR:
 							dr_code,dr_part1,dr_part2 = self.dr_codeParts(stmt.stmt,threadIndex,str(self.__stmtCount))  #DR
-							code = dr_part1 + '$I' + dr_part2 + dr_code +';\n'
+							code = '$I1' + dr_part1 + '$I2' + dr_part2 + '$I3' + dr_code + ';\n'
 						else:
-							code = '$I' + ' ' + self.visit(stmt.stmt) + ';\n'
+							code = '$I1$I2$I3' + self.visit(stmt.stmt) + ';\n'
 					elif (not self.__visit_funcReference and (
 						(type(stmt) == pycparser.c_ast.FuncCall and stmt.name.name == '__CSEQ_atomic_begin') or
 						(not self.__atomic and
@@ -509,9 +509,9 @@ class lazyseqnewschedule(core.module.Translator):
 						threadIndex = self.__threadIndex[self.__currentThread]
 						if self.__enableDR:
 							dr_code,dr_part1,dr_part2 = self.dr_codeParts(stmt.stmt,threadIndex,str(self.__stmtCount))  #DR
-							code = dr_part1 + "$I" + dr_part2 + dr_code +';\n'
+							code = '$I1' + dr_part1 + '$I2' + dr_part2 + '$I3' + dr_code + ';\n'
 						else:
-							code = '$I' + ' ' + self.visit(stmt.stmt) + ';\n'
+							code = '$I1$I2$I3' + self.visit(stmt.stmt) + ';\n'
 					else:
 						code = self.visit(stmt.stmt) + ';\n'
 
@@ -542,9 +542,9 @@ class lazyseqnewschedule(core.module.Translator):
 						threadIndex = self.__threadIndex[self.__currentThread]
 						if self.__enableDR:
 							dr_code,dr_part1,dr_part2 = self.dr_codeParts(stmt,threadIndex,str(self.__stmtCount))  #DR
-							code = dr_part1 + "$I" + dr_part2 + dr_code +';\n'
+							code = '$I1' + dr_part1 + '$I2' + dr_part2 + '$I3' + dr_code + ';\n'
 						else:
-							code = '$I' + ' ' + self.visit(stmt) + ';\n'
+							code = '$I1$I2$I3' + self.visit(stmt) + ';\n'
 					elif (not self.__visit_funcReference and (
 						(type(stmt) == pycparser.c_ast.FuncCall and stmt.name.name == '__CSEQ_atomic_begin') or
 						(not self.__atomic and
@@ -562,9 +562,9 @@ class lazyseqnewschedule(core.module.Translator):
 						threadIndex = self.__threadIndex[self.__currentThread]
 						if self.__enableDR:
 							dr_code,dr_part1,dr_part2 = self.dr_codeParts(stmt,threadIndex,str(self.__stmtCount))  #DR
-							code = dr_part1 + "$I" + dr_part2 + dr_code +';\n'
+							code = '$I1' + dr_part1 + '$I2' + dr_part2 + '$I3' + dr_code + ';\n'
 						else:
-							code = '$I' + ' ' + self.visit(stmt) + ';\n'
+							code = '$I1$I2$I3' + self.visit(stmt) + ';\n'
 					else:
 						code = self.visit(stmt) + ";\n"
 					compoundList.append(code)

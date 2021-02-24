@@ -22,7 +22,7 @@ class loopAnalysis(core.module.Translator):
 
 	__threadbound = 0		# number of threads
 
-	__threadIndex = {}  # index of the thread = value of threadcount when the pthread_create to that thread was discovered
+	__threadIndex = {}  	# index of the thread = value of threadcount when the pthread_create to that thread was discovered
 
 	def init(self):
 		pass
@@ -168,42 +168,91 @@ class loopAnalysis(core.module.Translator):
 		while (i < len(seqCode) and not done):
 			if seqCode[i] == '$':
 				if seqCode[i + 1] == 'I':
-				# First statement of thread
+					# Stop stripping at m
+					m = i
+					stringToStrip = seqCode[j:i]
+					while(seqCode[m-3 : m] != "$I3"):
+						stringToStrip += seqCode[m]
+						m += 1
+
+					# First statement of thread
 					if count == 0:
-						s = seqCode[j:i] + '__CSEQ_rawline("IF(%s,%s,t%s_%s)");' % (
-							self.__threadIndex[tName], count, tName, count + 1)
-						output.append(s)
+						for sub in (
+							("$I1", '__CSEQ_rawline("t%s_%s:");\n'% (tName, count)),
+							("$I2", '__CSEQ_rawline("IF(%s,%s,t%s_%s)");' % (self.__threadIndex[tName], count, tName, count + 1)),
+							("$I3", "")):
+    							stringToStrip = stringToStrip.replace(*sub)
+						output.append(stringToStrip)
 						count += 1
-						i += 2
-				# Context switch counted
+						i = m
+					
 					elif ICount in cRange:
-						#s = seqCode[j:i] + '__CSEQ_rawline("t%s_%s: IF(%s,%s,t%s_%s)");' % (
-						#	tName, count, self.__threadIndex[tName], count, tName, count + 1)
-						s1 = seqCode[j:i] + '__CSEQ_rawline("t%s_%s:");'% (tName, count)
-						s2 = '__CSEQ_rawline("IF(%s,%s,t%s_%s)");' % (self.__threadIndex[tName], count, tName, count + 1)
-						#output.append(s)
-						output.append(s1)
-						output.append(s2)
+						for sub in (
+							("$I1", '__CSEQ_rawline("t%s_%s:");\n'% (tName, count)),
+							("$I2", '__CSEQ_rawline("IF(%s,%s,t%s_%s)");' % (self.__threadIndex[tName], count, tName, count + 1)),
+							("$I3", "")):
+    							stringToStrip = stringToStrip.replace(*sub)
+						output.append(stringToStrip)
 						count += 1
-						i += 2
 						if ICount == list[iList][1] and iList < len(list) - 1:
-							iList += 1
-							cRange = range(list[iList][0], list[iList][1] + 1)
-				# Context switch not counted
+								iList += 1
+								cRange = range(list[iList][0], list[iList][1] + 1)
+						i = m
+					
 					else:
 						if seqCode[j:i] != '':
 							output.append(seqCode[j:i])
-							i += 2
-						i += 2
+						i = m
+					
 					j = i
 					ICount += 1
+
+					'''
+					# First statement of thread
+					if count == 0:
+						if seqCode[i + 2] == '1':
+							s = seqCode[j:i] + '__CSEQ_rawline("IF(%s,%s,t%s_%s)");' % (self.__threadIndex[tName], count, tName, count + 1)
+							count += 1	
+						if seqCode[i + 2] == '2':
+							s = seqCode[j:i] + '__CSEQ_rawline("t%s_%s:");\n'% (tName, count)
+						output.append(s)
+						i += 3
+					
+					# Context switch counted
+					elif ICount in cRange:
+						if seqCode[i + 2] == '1':
+							s = seqCode[j:i] + '__CSEQ_rawline("IF(%s,%s,t%s_%s)");' % (self.__threadIndex[tName], count, tName, count + 1)
+							count += 1
+							if ICount == list[iList][1] and iList < len(list) - 1:
+								iList += 1
+								cRange = range(list[iList][0], list[iList][1] + 1)
+						if seqCode[i + 2] == '2':
+							s = seqCode[j:i] + '__CSEQ_rawline("t%s_%s:");\n'% (tName, count)
+						output.append(s)
+						i += 3
+						
+
+					# Context switch not counted
+					else:
+						if seqCode[j:i] != '':
+							output.append(seqCode[j:i])
+						if seqCode[i + 2] == '1':
+							i += 4
+						if seqCode[i + 2] == '2':
+							i += 3
+					
+					print(count)
+					j = i
+					ICount += 1
+					'''
 				# Guard label
 				elif seqCode[i + 1] == 'G':
-					s = seqCode[j:i] + '__CSEQ_assume( __cs_pc_cs[%s] >= %s );' % (
+					s = seqCode[j:i] + '__CSEQ_assume( __cs_pc_cs[%s] >= %s );\n' % (
 						self.__threadIndex[tName], count)
 					output.append(s)
 					i += 2
 					j = i
+
 				# Last statement of thread
 				else:
 					s = seqCode[j:i] + '__CSEQ_rawline("t%s_%s: ");' % (tName, count)
@@ -315,6 +364,9 @@ class loopAnalysis(core.module.Translator):
 				output.append(maindriver)
 				output[0] = self.substituteThreadLines(output[0], maxlabels)
 			instanceGenerated = ''.join(t for t in output)
+			#with open("test.c", 'w') as fd:
+				#fd.write(instanceGenerated)
+			#sys.exit()
 			yield instanceGenerated, configNumber, configintervals
 
 	def backendChain(self, env, instance, confignumber, configintervals, swarmdirname, filename):
