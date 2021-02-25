@@ -387,6 +387,7 @@ class Translator(BasicModule,pycparser.c_generator.CGenerator):
 		self.removeemptylines()
 		self.generatelinenumbers()
 
+		#TODO associate new AST with hash of output
 
 	def getlinenumbertable(self):
 		linenumbers = ''

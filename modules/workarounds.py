@@ -79,27 +79,7 @@ class workarounds(core.module.Translator):
     __threadLocals = []
 
     __parsingFunction = ''
-    currentAnonStructsCount = 0   # counts the number of anonymous structures (used to assign consecutive names)
-
-    '''
-    def countparams(self, funcname):
-        count = 0
-
-        if funcname not in self.Parser.varNames:
-            return 0
-
-        for var in self.Parser.varNames[funcname]:
-            if self.Parser.varKind[funcname, var] == 'p':
-                count += 1
-
-        return count
-    '''
-
-    '''
-    def visit_Typedef(self, n):
-        s = super(self.__class__, self).visit_Typedef(n)
-        return s+'\n'
-    '''
+    currentAnonStructsCount = 0  # counts the number of anonymous structures (used to assign consecutive names)
 
     def visit_Cast(self, n):
         ''' Remove cast to NULL pointer in C
@@ -109,13 +89,11 @@ class workarounds(core.module.Translator):
         if s == '(void *) 0': s = '0'
         return s
 
-
     def visit_ID(self, n):
         if n.name in self.__threadLocals:
-            return '__cs_thread_local_'+n.name+'[__cs_thread_index]'
+            return '__cs_thread_local_' + n.name + '[__cs_thread_index]'
         else:
             return n.name
-
 
     def visit_FuncDef(self, n):
         self.__parsingFunction = n.decl.name
@@ -125,15 +103,7 @@ class workarounds(core.module.Translator):
         # Remove static declaration of function
         if decl.startswith('static '): decl = decl[7:]
 
-        # workaround #1
-        #if '__VERIFIER_atomic' in decl:
-        #   decl = decl.replace('__VERIFIER_atomic', core.common.funcPrefixChange['__VERIFIER_atomic'], 1)
-
         # workaround #3: insert (void *) argument to thread prototypes when missing
-        '''
-        if n.decl.name in self.Parser.threadName:
-            print "THREAD %s HAS %s params" % (n.decl.name, self.countparams(n.decl.name))
-        '''
         if n.decl.name in self.Parser.threadName and (decl.endswith('()') or decl.endswith('(void)')):
             decl = decl[:decl.rfind('(')] + '(void *__cs_unused)'
 
@@ -147,7 +117,6 @@ class workarounds(core.module.Translator):
         else:
             self.__parsingFunction = ''
             return decl + '\n' + body + '\n'
-
 
     def visit_FuncCall(self, n):
         fref = self._parenthesize_unless_simple(n.name)
@@ -172,7 +141,6 @@ class workarounds(core.module.Translator):
 
         return fref + '(' + args + ')'
 
-
     def visit_Decl(self, n, no_type=False):
         # no_type is used when a Decl is part of a DeclList, where the type is
         # explicitly only for the first delaration in a list.
@@ -191,15 +159,16 @@ class workarounds(core.module.Translator):
 
         # Transformation 8:
         pthread_init_dict = {
-            'pthread_mutex_t' : 'PTHREAD_MUTEX_INITIALIZER',
-            'pthread_cond_t'  : 'PTHREAD_COND_INITIALIZER',
-            'pthread_rwlock_t' : 'PTHREAD_RWLOCK_INITIALIZER'
+            'pthread_mutex_t': 'PTHREAD_MUTEX_INITIALIZER',
+            'pthread_cond_t': 'PTHREAD_COND_INITIALIZER',
+            'pthread_rwlock_t': 'PTHREAD_RWLOCK_INITIALIZER'
         }
 
         if n.init:
             if isinstance(n.init, pycparser.c_ast.InitList):
                 initType = 1
-                if (self.__parsingFunction, n.name) in self.Parser.varType and self.Parser.varType[self.__parsingFunction, n.name] in pthread_init_dict:
+                if (self.__parsingFunction, n.name) in self.Parser.varType and self.Parser.varType[
+                    self.__parsingFunction, n.name] in pthread_init_dict:
                     assignmentStmt = ' = ' + pthread_init_dict[self.Parser.varType[self.__parsingFunction, n.name]]
                 else:
                     assignmentStmt = ' = {' + self.visit(n.init) + '}'
@@ -235,8 +204,6 @@ class workarounds(core.module.Translator):
             if initType == 1:
                 return s + assignmentStmt
             return s + '; ' + n.name + assignmentStmt
-        else:
-            return s + assignmentStmt
 
         return s + assignmentStmt
 
@@ -270,7 +237,7 @@ class workarounds(core.module.Translator):
         t = self._generate_stmt(n.iftrue, add_indent=True)
 
         # if not t.startswith(self._make_indent()+ ('{\n')):   # always add brackets when missing
-        if not self._checkStartBrace(t):   # always add brackets when missing
+        if not self._checkStartBrace(t):  # always add brackets when missing
             t = self._make_indent() + '{\n' + t + self._make_indent() + '}\n'
 
         s += t
@@ -280,13 +247,12 @@ class workarounds(core.module.Translator):
             e = self._generate_stmt(n.iffalse, add_indent=True)
 
             # if not e.startswith(self._make_indent()+ ('{\n')):   # always add brackets when missing
-            if not self._checkStartBrace(e):   # always add brackets when missing
+            if not self._checkStartBrace(e):  # always add brackets when missing
                 e = self._make_indent() + '{\n' + e + self._make_indent() + '}\n'
 
             s += e
 
         return s
-
 
     def visit_For(self, n):
         ''' MEMCACHED
@@ -388,18 +354,18 @@ class workarounds(core.module.Translator):
 
         return self._generate_struct_union_enum(n, 'union')
 
-
     def visit_StructRef(self, n):
         sref = self._parenthesize_unless_simple(n.name)
 
         ret = ''
 
         # workaround no. 4
-        if n.type == '->': ret = ('(*' + sref + ').' + self.visit(n.field))
-        else: ret = sref + n.type + self.visit(n.field)
+        if n.type == '->':
+            ret = ('(*' + sref + ').' + self.visit(n.field))
+        else:
+            ret = sref + n.type + self.visit(n.field)
 
         return ret
-
 
     def visit_While(self, n):
         s = 'while ('
@@ -411,11 +377,10 @@ class workarounds(core.module.Translator):
         t = self._generate_stmt(n.stmt, add_indent=True)
 
         # if not t.startswith(self._make_indent()+ ('{\n')):   # always add brackets when missing
-        if not self._checkStartBrace(t):   # always add brackets when missing
+        if not self._checkStartBrace(t):  # always add brackets when missing
             t = self._make_indent() + '{\n' + t + self._make_indent() + '}\n'
 
         return s + t
-
 
     def visit_DoWhile(self, n):
         cond = self.visit(n.cond) if n.cond else ''
@@ -424,14 +389,12 @@ class workarounds(core.module.Translator):
 
         t = self._generate_stmt(n.stmt, add_indent=True)
 
-        # if not t.startswith(self._make_indent()+ ('{\n')):   # always add brackets when missing
-        if not self._checkStartBrace(t):   # always add brackets when missing
+        if not self._checkStartBrace(t):  # always add brackets when missing
             t = self._make_indent() + '{\n' + t + self._make_indent() + '}\n'
 
         s += t
         s += self._make_indent() + 'while ('
 
-        # if n.cond: s += self.visit(n.cond)
         s += cond
 
         s += ');'
@@ -446,4 +409,3 @@ class workarounds(core.module.Translator):
             return True
 
         return False
-
