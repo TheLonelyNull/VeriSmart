@@ -1,0 +1,40 @@
+CBMC version 5.10 (cbmc-5.10) 64-bit x86_64 linux
+Parsing examples/_cs_peterson.c
+Converting
+Type-checking _cs_peterson
+Generating GOTO Program
+Adding CPROVER library (x86_64)
+Removal of function pointers and virtual functions
+Generic Property Instrumentation
+Running with 8 object bits, 24 offset bits (default)
+Starting Bounded Model Checking
+size of program expression: 405 steps
+simple slicing removed 149 assignments
+Generated 1 VCC(s), 1 remaining after simplification
+Passing problem to propositional reduction
+converting SSA
+Running propositional reduction
+Post-processing
+Solving with MiniSAT 2.2.1 with simplifier
+376 variables, 759 clauses
+SAT checker: instance is UNSATISFIABLE
+Runtime decision procedure: 0.00147s
+
+** Results:
+[__cs_mutex_destroy.assertion.1] attempt to destroy an uninitialized mutex: SUCCESS
+[__cs_mutex_destroy.assertion.2] attempt to destroy a previously destroyed mutex: SUCCESS
+[__cs_mutex_destroy.assertion.3] attempt to destroy a locked mutex: SUCCESS
+[__cs_mutex_lock.assertion.1] attempt to lock an uninitialized mutex: SUCCESS
+[__cs_mutex_lock.assertion.2] attempt to lock a destroyed mutex: SUCCESS
+[__cs_mutex_unlock.assertion.1] attempt to unlock an uninitialized mutex: SUCCESS
+[__cs_mutex_unlock.assertion.2] attempt to unlock a destroyed mutex: SUCCESS
+[__cs_cond_wait_1.assertion.1] attempt to use an uninitialized conditional variable: SUCCESS
+[__cs_cond_wait_1.assertion.2] attempt to use a destroyed conditional variable: SUCCESS
+[__cs_barrier_init.assertion.1] count must be greater than 0: SUCCESS
+[__cs_barrier_wait_1.assertion.1] attempt to use an uninitialized barrier variable: SUCCESS
+[__cs_barrier_wait_2.assertion.1] attempt to use an uninitialized barrier variable: SUCCESS
+[thr1_0.assertion.1] assertion 0: SUCCESS
+[thr2_0.assertion.1] assertion 0: SUCCESS
+
+** 0 of 14 failed (1 iteration)
+VERIFICATION SUCCESSFUL
