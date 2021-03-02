@@ -2,3 +2,4 @@ examples/
 log/
 *.pyc
 cbmc-SM
+VerismartOLD/
