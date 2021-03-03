@@ -119,14 +119,17 @@ class lazyseqnewschedule(core.module.Translator):
 		self.addInputParam('guess-cs-only', 'context switch is guessed only', '', default=False, optional=True)
 		self.addInputParam('norobin', 'use new schedule', '', default=False, optional=True)
 		self.addInputParam('preanalysis', 'use preanalysis input from abstract interpretation backend', 'u', default=None, optional=True)
+
 		self.addInputParam('donotcheckvisiblepointer', 'do not check pointer for visible statement', '', default=False, optional=True)
 
 		self.addOutputParam('bitwidth')
 		self.addOutputParam('header')
+
 		#Calenda De Mattia
 		self.addOutputParam('lines')
 		self.addOutputParam('threadNames')
 		self.addOutputParam('threadIndex')
+
 
 	def loadfromstring(self, string, env):
 		if self.getInputParamValue('deadlock') is not None:
@@ -216,8 +219,7 @@ class lazyseqnewschedule(core.module.Translator):
 				maxsize = max(int(maxsize), int(self.__lines[t]))
 				#print "CONFRONTO %s %s " % (int(maxsize), int(self.__lines[t]))
 			i += 1
-
-
+		if env.debug: print ("thread lines: {%s}" % lines),
 		ones = ''
 		if i <= self.__threadbound:
 			if i>0: ones += ', '
@@ -228,6 +230,7 @@ class lazyseqnewschedule(core.module.Translator):
 		#
 		# the first part is not parsable (contains macros)
 		# so it is passed to next module as a header...
+
 		if self.__decomposepc:
 			header = core.utils.printFile('modules/lazyseqAdecomposepc.c')
 		elif self.__one_pc_cs:
@@ -237,6 +240,7 @@ class lazyseqnewschedule(core.module.Translator):
 		header = header.replace('<insert-maxthreads-here>',str(threads))
 		header = header.replace('<insert-maxrounds-here>',str(rounds))
 		self.setOutputParam('header', header)
+
 
 		i = 0
 		pc_decls = ''
@@ -426,13 +430,17 @@ class lazyseqnewschedule(core.module.Translator):
 		code=''
 		if self.__sharedVarsW: 
 			condition += '||'.join('__CPROVER_get_field(%s,"dr_write")' % i for i in  self.__sharedVarsW) 
-		if self.__sharedVarsR:
-			if condition != '': condition += '|| '
-			condition += '||'.join('__CPROVER_get_field(%s,"dr_write")' % i for i in  self.__sharedVarsR) 
+		list=[]    #S: added on March 2, 2021
+		for x in self.__sharedVarsR:    #S: added on March 2, 2021
+		   if x not in self.__sharedVarsW:    #S: added on March 2, 2021
+			   list.append(x)    #S: added on March 2, 2021
+		if list:    #S: modified on March 2, 2021
+		   if condition != '': condition += '|| '
+		   condition += '||'.join('__CPROVER_get_field(%s,"dr_write")' % i for i in list) #S: modified on March 2, 2021
 		if condition != '' and self.__CEadditionalCondition != '': 
-			condition += '|| ' + self.__CEadditionalCondition
+		   condition += '|| ' + self.__CEadditionalCondition
 		else: 
-			condition += self.__CEadditionalCondition 
+		   condition += self.__CEadditionalCondition 
 
 		if condition != '':
 			if self.__wwDatarace:
@@ -460,8 +468,8 @@ class lazyseqnewschedule(core.module.Translator):
 			for stmt in n.block_items:
 				if self.__enableDR:
 					#DR: added wrt Lazy-Cseq to handle conditions on writes/reads of globals
-					self.__sharedVarsR = []    
-					self.__sharedVarsW = []    
+					self.__sharedVarsR = []   
+					self.__sharedVarsW = []   
 					self.__CEadditionalCondition = ''   #for conditional expressions
 					self.__CEadditionalSetFields = ''   #for conditional expressions
 					#DR end
@@ -470,7 +478,7 @@ class lazyseqnewschedule(core.module.Translator):
 				if type(stmt) == pycparser.c_ast.FuncCall and stmt.name.name == core.common.changeID['pthread_exit']: ##if type(stmt) == pycparser.c_ast.FuncCall and self._parenthesize_unless_simple(stmt.name) == core.common.changeID['pthread_exit']:
 					self.__stmtCount += 1
 					self.__maxInCompound = self.__stmtCount
-					code = '$F' + ' ' + self.visit(stmt) + ';\n'
+					code = '$F ' + self.visit(stmt) + ';\n'
 					compoundList.append(code)
 
 				# Case 2: labels
@@ -595,20 +603,17 @@ class lazyseqnewschedule(core.module.Translator):
 			self.__visit_funcReference = False
 			return s
 		elif (n.decl.name != 'main' and n.decl.name not in self.Parser.threadName): return ''  #S:added to remove not yet inlined functions that are not referenced any more
-
-
 		self.__first = False
 		self.__currentThread = n.decl.name
 		self.__firstThreadCreate = False
 
-		#CalendaDeMattia
+		#Caledem
 		# Next three lines were formerly from visit_FuncCall
 		# This way we get the thread names in the order the thread definitions occour
 		self.__threadName.append(n.decl.name)
 		self.__threadIndex[n.decl.name] = self.__threadCount
 		self.__threadCount = self.__threadCount + 1
 		
-
 		decl = self.visit(n.decl)
 		self.indent_level = 0
 		body = self.visit(n.body)
@@ -661,6 +666,7 @@ class lazyseqnewschedule(core.module.Translator):
 
 		return f + '\n\n'
 
+
 	def visit_If(self, n):
 		ifStart = self.__maxInCompound   # label where the if stmt begins
 
@@ -686,7 +692,7 @@ class lazyseqnewschedule(core.module.Translator):
 				# GUARD(%s,%s)
 				if not self.__visit_funcReference:
 					# elseHeader = '$G' + str(ifEnd+1) + ' '
-					elseHeader = '$G' + ' '
+					elseHeader = '$G '
 					# if self.__decomposepc:
 						## elseHeader = '__CSEQ_assume( __cs_pc_cs_%s >= %s );' % (threadIndex, str(ifEnd+1))
 						# elseHeader = '__CSEQ_rawline($G__cs_pc_cs_%s >= $$);\n' % (threadIndex)
@@ -739,6 +745,7 @@ class lazyseqnewschedule(core.module.Translator):
 
 		return header + s + self._make_indent() + footer
 
+
 	def visit_Return(self, n):
 		if self.__currentThread != '__CSEQ_assert' and self.__currentThread not in self.Parser.funcReferenced and not self.__atomic:
 			self.error("error: %s: return statement in thread '%s'.\n" % (self.getname(), self.__currentThread))
@@ -747,9 +754,11 @@ class lazyseqnewschedule(core.module.Translator):
 		if n.expr: s += ' ' + self.visit(n.expr)
 		return s + ';'
 
+
 	def visit_Label(self, n):
 		self.__labelLine[self.__currentThread, n.name] = self.__stmtCount
 		return n.name + ':\n' + self._generate_stmt(n.stmt)
+
 
 	def visit_Goto(self, n):
 		self.__gotoLine[self.__currentThread, n.name] = self.__stmtCount
@@ -1995,6 +2004,7 @@ class lazyseqnewschedule(core.module.Translator):
 		elif self.__laddress != '' and self.__laddress not in self.__sharedVarsW:
 			self.__sharedVarsW.append(self.__laddress)
 
+		self.__visitingLPart = False  #S: added on March 2, 2021
 		rvalue = self.visit(n.rvalue)
 
 		if self.__dr_additionalCondition == "1":   #DR
@@ -2023,12 +2033,15 @@ class lazyseqnewschedule(core.module.Translator):
 					if self.__CEadditionalCondition != '': self.__CEadditionalCondition +=' ||'
 					self.__CEadditionalCondition +='( %s && __CPROVER_get_field(%s,"dr_write"))' % (self.__conditionCE, operand)    #DR
 					self.__CEreadVars.append(operand)
-						 
 			elif operand not in self.__sharedVarsR and self.__visitingLPart == False: 
-				self.__sharedVarsR.append(operand)
+				   self.__sharedVarsW.append(operand)
 			return ret
+		elif n.op == "++" or n.op == "--" or n.op == "p++" or n.op == "p--": #S: added on March 2, 2021
+			if '&'+operand not in self.__sharedVarsW:    #S: added on March 2, 2021
+				self.__sharedVarsW.append('&'+operand)   #S: added on March 2, 2021
+			return super(self.__class__, self).visit_UnaryOp(n)
 		else:
-		   return super(self.__class__, self).visit_UnaryOp(n) 
+			return super(self.__class__, self).visit_UnaryOp(n) 
 
 
 #DR added to handle properly conditional expressions

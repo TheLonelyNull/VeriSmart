@@ -178,7 +178,7 @@ class loopAnalysis(core.module.Translator):
 					# First statement of thread
 					if count == 0:
 						for sub in (
-							("$I1", '__CSEQ_rawline("t%s_%s:");\n'% (tName, count)),
+							("$I1", ''),
 							("$I2", '__CSEQ_rawline("IF(%s,%s,t%s_%s)");' % (self.__threadIndex[tName], count, tName, count + 1)),
 							("$I3", "")):
     							stringToStrip = stringToStrip.replace(*sub)

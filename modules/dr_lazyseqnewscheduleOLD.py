@@ -231,7 +231,7 @@ class dr_lazyseqnewschedule(core.module.Translator):
 		header = header.replace('<insert-maxthreads-here>',str(threads))
 		header = header.replace('<insert-maxrounds-here>',str(rounds))
 		self.setOutputParam('header', header)
-		
+	   
 
 		i = 0
 		pc_decls = ''
@@ -403,13 +403,9 @@ class dr_lazyseqnewschedule(core.module.Translator):
 		code=''
 		if self.__sharedVarsW: 
 		   condition += '||'.join('__CPROVER_get_field(%s,"dr_write")' % i for i in  self.__sharedVarsW) 
-		list=[]    #S: added on March 2, 2021
-		for x in self.__sharedVarsR:    #S: added on March 2, 2021
-		   if x not in self.__sharedVarsW:    #S: added on March 2, 2021
-			   list.append(x)    #S: added on March 2, 2021
-		if list:    #S: modified on March 2, 2021
+		if self.__sharedVarsR:
 		   if condition is not '': condition += '|| '
-		   condition += '||'.join('__CPROVER_get_field(%s,"dr_write")' % i for i in list) #S: modified on March 2, 2021
+		   condition += '||'.join('__CPROVER_get_field(%s,"dr_write")' % i for i in  self.__sharedVarsR) 
 		if condition is not '' and self.__CEadditionalCondition is not '': 
 		   condition += '|| ' + self.__CEadditionalCondition
 		else: 
@@ -1098,7 +1094,6 @@ class dr_lazyseqnewschedule(core.module.Translator):
 		elif self.__laddress != '' and self.__laddress not in self.__sharedVarsW:
 			self.__sharedVarsW.append(self.__laddress)
 
-		self.__visitingLPart = False  #S: added on March 2, 2021
 		rvalue = self.visit(n.rvalue)
 
 		if self.__dr_additionalCondition == "1":   #DR
@@ -1127,13 +1122,10 @@ class dr_lazyseqnewschedule(core.module.Translator):
 				   if self.__CEadditionalCondition is not '': self.__CEadditionalCondition +=' ||'
 				   self.__CEadditionalCondition +='( %s && __CPROVER_get_field(%s,"dr_write"))' % (self.__conditionCE, operand)    #DR
 				   self.__CEreadVars.append(operand)
+						 
 		   elif operand not in self.__sharedVarsR and self.__visitingLPart == False: 
-				   self.__sharedVarsW.append(operand)
+					self.__sharedVarsR.append(operand)
 		   return ret
-		elif n.op == "++" or n.op == "--" or n.op == "p++" or n.op == "p--": #S: added on March 2, 2021
-		  if '&'+operand not in self.__sharedVarsW:    #S: added on March 2, 2021
-			  self.__sharedVarsW.append('&'+operand)   #S: added on March 2, 2021
-		  return super(self.__class__, self).visit_UnaryOp(n)
 		else:
 		   return super(self.__class__, self).visit_UnaryOp(n) 
 
