@@ -1,0 +1,5 @@
+Number of context-switch of each thread:
+main : 8
+thread_0 : 152
+thread_1 : 152
+thread_2 : 152

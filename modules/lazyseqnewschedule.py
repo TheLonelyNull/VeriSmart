@@ -486,11 +486,12 @@ class lazyseqnewschedule(core.module.Translator):
 					if not self.__atomic and self.__stmtCount == -1:   # first statement in a thread
 						self.__stmtCount += 1
 						self.__maxInCompound = self.__stmtCount
+						threadIndex = self.__threadIndex[self.__currentThread]
 						if self.__enableDR:
 							dr_code,dr_part1,dr_part2 = self.dr_codeParts(stmt.stmt,threadIndex,str(self.__stmtCount))  #DR
-							code = dr_part1 + '$I' + dr_part2 + dr_code +';\n'
+							code = '$I1' + dr_part1 + '$I2' + dr_part2 + '$I3' + dr_code + ';\n'
 						else:
-							code = '$I' + ' ' + self.visit(stmt.stmt) + ';\n'
+							code = '$I1$I2$I3' + self.visit(stmt.stmt) + ';\n'
 					elif (not self.__visit_funcReference and (
 						(type(stmt) == pycparser.c_ast.FuncCall and stmt.name.name == '__CSEQ_atomic_begin') or
 						(not self.__atomic and
@@ -505,17 +506,17 @@ class lazyseqnewschedule(core.module.Translator):
 						)):
 						self.__stmtCount += 1
 						self.__maxInCompound = self.__stmtCount
-						threadIndex = self.Parser.threadIndex[self.__currentThread] if self.__currentThread in self.Parser.threadIndex else 0
+						threadIndex = self.__threadIndex[self.__currentThread]
 						if self.__enableDR:
 							dr_code,dr_part1,dr_part2 = self.dr_codeParts(stmt.stmt,threadIndex,str(self.__stmtCount))  #DR
-							code = dr_part1 + "$I" + dr_part2 + dr_code +';\n'
+							code = '$I1' + dr_part1 + '$I2' + dr_part2 + '$I3' + dr_code + ';\n'
 						else:
-							code = '$I' + ' ' + self.visit(stmt.stmt) + ';\n'
+							code = '$I1$I2$I3' + self.visit(stmt.stmt) + ';\n'
 					else:
 						code = self.visit(stmt.stmt) + ';\n'
 
 					guard = ''
-					threadIndex = self.Parser.threadIndex[self.__currentThread] if self.__currentThread in self.Parser.threadIndex else 0
+					threadIndex = self.__threadIndex[self.__currentThread]
 					if not self.__atomic:
 						guard = '$G'
 					code = self._make_indent() + stmt.name + ': ' + guard + code + '\n'
@@ -538,12 +539,12 @@ class lazyseqnewschedule(core.module.Translator):
 					if not self.__atomic and self.__stmtCount == -1:   # first statement in a thread
 						self.__stmtCount += 1
 						self.__maxInCompound = self.__stmtCount
-						threadIndex = self.Parser.threadIndex[self.__currentThread] if self.__currentThread in self.Parser.threadIndex else 0
+						threadIndex = self.__threadIndex[self.__currentThread]
 						if self.__enableDR:
 							dr_code,dr_part1,dr_part2 = self.dr_codeParts(stmt,threadIndex,str(self.__stmtCount))  #DR
-							code = dr_part1 + "$I" + dr_part2 + dr_code +';\n'
+							code = '$I1' + dr_part1 + '$I2' + dr_part2 + '$I3' + dr_code + ';\n'
 						else:
-							code = '$I' + ' ' + self.visit(stmt) + ';\n'
+							code = '$I1$I2$I3' + self.visit(stmt) + ';\n'
 					elif (not self.__visit_funcReference and (
 						(type(stmt) == pycparser.c_ast.FuncCall and stmt.name.name == '__CSEQ_atomic_begin') or
 						(not self.__atomic and
@@ -558,12 +559,12 @@ class lazyseqnewschedule(core.module.Translator):
 						)):
 						self.__stmtCount += 1
 						self.__maxInCompound = self.__stmtCount
-						threadIndex = self.Parser.threadIndex[self.__currentThread] if self.__currentThread in self.Parser.threadIndex else 0
+						threadIndex = self.__threadIndex[self.__currentThread]
 						if self.__enableDR:
 							dr_code,dr_part1,dr_part2 = self.dr_codeParts(stmt,threadIndex,str(self.__stmtCount))  #DR
-							code = dr_part1 + "$I" + dr_part2 + dr_code +';\n'
+							code = '$I1' + dr_part1 + '$I2' + dr_part2 + '$I3' + dr_code + ';\n'
 						else:
-							code = '$I' + ' ' + self.visit(stmt) + ';\n'
+							code = '$I1$I2$I3' + self.visit(stmt) + ';\n'
 					else:
 						code = self.visit(stmt) + ";\n"
 					compoundList.append(code)
@@ -1426,7 +1427,7 @@ class lazyseqnewschedule(core.module.Translator):
 			main += "          }\n\n"
 			main += "\n"
 			# For other threads
-			i = 1
+			i = 0
 			for t in self.__threadName:
 				if t == 'main': continue
 				if i <= self.__threadbound:
@@ -1507,7 +1508,7 @@ class lazyseqnewschedule(core.module.Translator):
 		main +="\n"
 		# Other threads
 		ts = 1 #DR
-		i = 1
+		i = 0
 		for t in self.__threadName:
 			if t == 'main': continue
 			if i <= self.__threadbound:
@@ -1560,7 +1561,7 @@ class lazyseqnewschedule(core.module.Translator):
 			main +="\n"
 			# For other threads
 			ts += 1 #DR
-			i = 1
+			i = 0
 			for t in self.__threadName:
 				if t == 'main': continue
 				if i <= self.__threadbound:

@@ -197,6 +197,13 @@ class feeder(core.module.BasicModule):
 
 		if pathbackend is not None and pathbackend != '' and backend == 'cbmc':
 			exe = pathbackend
+		
+		#Caledem
+		if backend == "cbmc":
+			if env.enableDR:
+				exe = "./cbmc-SM"
+			else:
+				exe = "./cbmc-v5.10-static"
 
 		currentpath = os.getcwd()
 		# currentworkingdir = os.path.dirname(sys.argv[0])
