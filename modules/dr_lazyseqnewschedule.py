@@ -403,9 +403,13 @@ class dr_lazyseqnewschedule(core.module.Translator):
         code=''
         if self.__sharedVarsW: 
            condition += '||'.join('__CPROVER_get_field(%s,"dr_write")' % i for i in  self.__sharedVarsW) 
-        if self.__sharedVarsR:
+        list=[]    #S: added on March 2, 2021
+        for x in self.__sharedVarsR:    #S: added on March 2, 2021
+           if x not in self.__sharedVarsW:    #S: added on March 2, 2021
+               list.append(x)    #S: added on March 2, 2021
+        if list:    #S: modified on March 2, 2021
            if condition is not '': condition += '|| '
-           condition += '||'.join('__CPROVER_get_field(%s,"dr_write")' % i for i in  self.__sharedVarsR) 
+           condition += '||'.join('__CPROVER_get_field(%s,"dr_write")' % i for i in list) #S: modified on March 2, 2021
         if condition is not '' and self.__CEadditionalCondition is not '': 
            condition += '|| ' + self.__CEadditionalCondition
         else: 
@@ -931,8 +935,8 @@ class dr_lazyseqnewschedule(core.module.Translator):
             if t == 'main': continue
             if i <= self.__threadbound:
                 main +="__CSEQ_rawline(\"    /* %s */\");\n" % t
-                #main +="__CSEQ_rawline(\"__cs_ts=%s;\");\n" % i   #POR
-                #main +="__CSEQ_rawline(\"__cs_tsplusone=%s;\");\n" % ( self.__threadbound+1+i)   #POR
+#                main +="__CSEQ_rawline(\"__cs_ts=%s;\");\n" % i   #POR
+#                main +="__CSEQ_rawline(\"__cs_tsplusone=%s;\");\n" % ( self.__threadbound+1+i)   #POR
                 main +="         unsigned int __cs_tmp_t%s_r0 %s;\n" % (i, self.__extra_nondet)
                 main +="         if (__cs_dataraceContinue & __cs_active_thread[%s]) {\n" % (i)           #DR
                 main +="             __cs_pc_cs[%s] = __cs_tmp_t%s_r0;\n" % (i, i)
@@ -944,7 +948,7 @@ class dr_lazyseqnewschedule(core.module.Translator):
                 main +="             if(__cs_dataraceSecondThread & (__cs_tmp_t%s_r0 > 0)) __cs_dataraceContinue=0;\n" % i #DR
                 if ts <= maxts :   #DR
                       main +="             if(__cs_dataraceDetectionStarted) __cs_dataraceSecondThread=1;\n"  #DR
-                #main +="             __CSEQ_assume(__cs_is_por_exec);\n" #DR
+#                main +="             __CSEQ_assume(__cs_is_por_exec);\n" #DR
                 main +="             __cs_pc[%s] = __cs_pc_cs[%s];\n" % (i, i)
                 main +="         }\n\n"
                 i += 1
@@ -954,11 +958,11 @@ class dr_lazyseqnewschedule(core.module.Translator):
         '''
         for round in range(1, ROUNDS):
             main +="__CSEQ_rawline(\"/* round  %s */\");\n" % round
-            #main +="__CSEQ_rawline(\"__cs_isFirstRound= 0;\");\n"  #POR
+#            main +="__CSEQ_rawline(\"__cs_isFirstRound= 0;\");\n"  #POR
             # For main thread
             main +="__CSEQ_rawline(\"    /* main */\");\n"
-            #main +="__CSEQ_rawline(\"__cs_ts=%s;\");\n" % (round * (self.__threadbound+1))   #POR
-            #main +="__CSEQ_rawline(\"__cs_tsplusone=%s;\");\n" % ( (round+1) * ( self.__threadbound+1) )  #POR
+#            main +="__CSEQ_rawline(\"__cs_ts=%s;\");\n" % (round * (self.__threadbound+1))   #POR
+#            main +="__CSEQ_rawline(\"__cs_tsplusone=%s;\");\n" % ( (round+1) * ( self.__threadbound+1) )  #POR
             main +="          unsigned int __cs_tmp_t0_r%s %s;\n" % (round, self.__extra_nondet)
             main +="          if (__cs_dr_ts > %s &  __cs_dataraceContinue & __cs_active_thread[0]) {\n" %  (ts - (self.__threadbound+1))          #DR
             if self.__guess_cs_only:
@@ -973,7 +977,7 @@ class dr_lazyseqnewschedule(core.module.Translator):
             main +="             if(__cs_dataraceSecondThread & (__cs_tmp_t0_r%s > 0)) __cs_dataraceContinue=0;\n" % (round) #DR
             if ts <= maxts :   #DR
                 main +="             if(__cs_dataraceDetectionStarted) __cs_dataraceSecondThread=1;\n"  #DR
-            #main +="             __CSEQ_assume(__cs_is_por_exec);\n" #POR
+#            main +="             __CSEQ_assume(__cs_is_por_exec);\n" #POR
             main +="             __cs_pc[0] = __cs_pc_cs[0];\n"
             main +="          }\n\n"
             main +="\n"
@@ -984,11 +988,11 @@ class dr_lazyseqnewschedule(core.module.Translator):
                 if t == 'main': continue
                 if i <= self.__threadbound:
                     main +="__CSEQ_rawline(\"    /* %s */\");\n" % t
-                    #main +="__CSEQ_rawline(\"__cs_ts=%s;\");\n" % (round * (self.__threadbound+1) + i )   #POR
-                    #if (round == ROUNDS -1): 
-                        #main +="__CSEQ_rawline(\"__cs_tsplusone=%s;\");\n" % ( (round+1) * ( self.__threadbound+1))  #POR
-                    #else:
-                        #main +="__CSEQ_rawline(\"__cs_tsplusone=%s;\");\n" % ( (round+1) * ( self.__threadbound+1) + i)  #POR
+#                    main +="__CSEQ_rawline(\"__cs_ts=%s;\");\n" % (round * (self.__threadbound+1) + i )   #POR
+#                    if (round == ROUNDS -1): 
+#                        main +="__CSEQ_rawline(\"__cs_tsplusone=%s;\");\n" % ( (round+1) * ( self.__threadbound+1))  #POR
+#                    else:
+#                        main +="__CSEQ_rawline(\"__cs_tsplusone=%s;\");\n" % ( (round+1) * ( self.__threadbound+1) + i)  #POR
                     main +="         unsigned int __cs_tmp_t%s_r%s %s;\n" % (i, round, self.__extra_nondet)
                     main +="         if (__cs_dr_ts > %s & __cs_dataraceContinue & __cs_active_thread[%s]) {\n" % ( ts - (self.__threadbound+1) ,i)           #DR
                     if self.__guess_cs_only:
@@ -1004,7 +1008,7 @@ class dr_lazyseqnewschedule(core.module.Translator):
                     main +="             if(__cs_dataraceSecondThread & (__cs_tmp_t%s_r%s > 0)) __cs_dataraceContinue=0;\n" % (i,round) #DR
                     if ts <= maxts :   #DR
                          main +="             if(__cs_dataraceDetectionStarted) __cs_dataraceSecondThread=1;\n"  #DR
-                    #main +="             __CSEQ_assume(__cs_is_por_exec);\n" #POR
+#                    main +="             __CSEQ_assume(__cs_is_por_exec);\n" #POR
                     main +="             __cs_pc[%s] = __cs_pc_cs[%s];\n" % (i, i)
                     main +="         }\n\n"
                     i += 1
@@ -1094,6 +1098,7 @@ class dr_lazyseqnewschedule(core.module.Translator):
         elif self.__laddress != '' and self.__laddress not in self.__sharedVarsW:
             self.__sharedVarsW.append(self.__laddress)
 
+        self.__visitingLPart = False  #S: added on March 2, 2021
         rvalue = self.visit(n.rvalue)
 
         if self.__dr_additionalCondition == "1":   #DR
@@ -1122,10 +1127,13 @@ class dr_lazyseqnewschedule(core.module.Translator):
                    if self.__CEadditionalCondition is not '': self.__CEadditionalCondition +=' ||'
                    self.__CEadditionalCondition +='( %s && __CPROVER_get_field(%s,"dr_write"))' % (self.__conditionCE, operand)    #DR
                    self.__CEreadVars.append(operand)
-                         
            elif operand not in self.__sharedVarsR and self.__visitingLPart == False: 
-                    self.__sharedVarsR.append(operand)
+                   self.__sharedVarsW.append(operand)
            return ret
+        elif n.op == "++" or n.op == "--" or n.op == "p++" or n.op == "p--": #S: added on March 2, 2021
+          if '&'+operand not in self.__sharedVarsW:    #S: added on March 2, 2021
+              self.__sharedVarsW.append('&'+operand)   #S: added on March 2, 2021
+          return super(self.__class__, self).visit_UnaryOp(n)
         else:
            return super(self.__class__, self).visit_UnaryOp(n) 
 
