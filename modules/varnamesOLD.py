@@ -1,7 +1,7 @@
 """ CSeq C Sequentialization Framework
 	scope-based variable renaming module
 
-	written by Omar Inverso, University of Southampton.
+    written by Omar Inverso, University of Southampton.
 """
 VERSION = 'varnames-0.0-2015.07.08'
 #VERSION = 'varnames-0.0-2014.12.24'    # CSeq-1.0beta
@@ -37,7 +37,7 @@ TODO:
 
 Changelog:
 	2015.07.08  map with variable renames returned as an output parameter
-	2014.12.09  further code refactory to match the new organisation of the CSeq framework
+    2014.12.09  further code refactory to match the new organisation of the CSeq framework
 	2014.10.27  different prefixes for local variables and function parameters
 	2014.10.26  changed  __stack  to  stack  (to inherit stack handling from module.py)
 	2014.10.15  removed visit() and moved visit call-stack handling to module class (module.py)
@@ -54,12 +54,10 @@ class varnames(core.module.Translator):
 	__debug = False
 	__visitingStructRef = False   # to avoid considering struct fields as local variables
 
-	nondetprefix = '__cs_nondet_'  # prefix for uninitialized local variables 
-	prefix = '__cs_local_'        # prefix for initialized local variables
+	prefix = '__cs_local_'        # prefix for local variables
 	paramprefix = '__cs_param_'   # prefix for function params
 
-
-	newIDs = {}   # mapping of stacks containing maps of old variable names to new variable names, stack accounts for nested defs of same name
+	newIDs = {}   # mapping of old variable names to new variable names
 
 	varmap = {}
 
@@ -69,16 +67,12 @@ class varnames(core.module.Translator):
 	__visitingDecl = 0
 	__visitFuncDef = 0
 	__visitStructUnionEnum = 0
-	__visitingCompound = 0 #S depth of nested blocks, used for var renaming
-	__init = None         #S added to handle local init
-	inlineInfix = ''            #S: added to copy inlineInfix from env passed in loadfromstring
 
 	def init(self):
 		self.addOutputParam('varnamesmap')
 
 
 	def loadfromstring(self, string, env):
-		self.inlineInfix = env.inlineInfix
 		super(self.__class__, self).loadfromstring(string, env)
 		self.setOutputParam('varnamesmap', self.varmap)
 		#print str(self.newIDs).replace(', ','\n')
@@ -88,7 +82,6 @@ class varnames(core.module.Translator):
 		# no_type is used when a Decl is part of a DeclList, where the type is
 		# explicitly only for the first delaration in a list.
 		#
-		self.__init=n.init
 		self.__visitingDecl += 1
 
 		s = n.name if no_type else self._generate_decl(n)
@@ -162,7 +155,7 @@ class varnames(core.module.Translator):
 		sref = self._parenthesize_unless_simple(n.name)
 		oldvisitingStructRef = False
 		self.__visitingStructRef = True
-		if self.__debug: print("------- ------- ------- ------- ------- ------- VISITING STRUCT REF START (%s)") % sref
+		if self.__debug: print("------- ------- ------- ------- ------- ------- VISITING STRUCT REF START (%s)" % sref)
 		retval = sref + n.type + self.visit(n.field)
 		if self.__debug: print("------- ------- ------- ------- ------- ------- VIITING STRUCT REF END")
 		self.__visitingStructRef = 	oldvisitingStructRef
@@ -172,36 +165,30 @@ class varnames(core.module.Translator):
 	def visit_ID(self, n):
 		prefix = ''
 
-		#print self.Parser.varNames
 		#if n.name in self.Parser.varNames[self.__currentFunction] and self.Parser.varKind[self.__currentFunction,n.name] == 'p':
 		if n.name in self.Parser.varNames[self.__currentFunction]:
-			if self.__debug: print("visiting ID: [%s,%s]") % (self.__currentFunction,n.name)
+			if self.__debug: print("visiting ID: [%s,%s]" % (self.__currentFunction,n.name))
 
 		if (n.name in self.Parser.varNames[self.__currentFunction] and
-			self.__currentFunction != '' and
-			not self.__visitingStructRef ):
-			#str(self.stack[len(self.stack)-2]) != 'StructRef' ):        # e.g. visiting ID: x->ID or x.ID (this is not a local var, but a field)
-				if self.__debug: print("     local PARAMETER")
-				if self.__debug: print("     stack: " +  str(self.stack) + '   prev:' + str(self.stack[len(self.stack)-2]))
+		    self.__currentFunction != '' and
+		    not self.__visitingStructRef ):
+		    #str(self.stack[len(self.stack)-2]) != 'StructRef' ):        # e.g. visiting ID: x->ID or x.ID (this is not a local var, but a field)
+			if self.__debug: print("     local PARAMETER")
+			if self.__debug: print("     stack: "+  str(self.stack) + '   prev:' + str(self.stack[len(self.stack)-2]))
 
-				#prefix = self.newIDs[self.__currentFunction, super(self.__class__, self).visit_ID(n)]
-				prefix = self.newIDs[self.__currentFunction, super(self.__class__, self).visit_ID(n)][-1][0]
+			prefix = self.newIDs[self.__currentFunction, super(self.__class__, self).visit_ID(n)]
 
-				self.varmap[prefix+super(self.__class__, self).visit_ID(n)] = super(self.__class__, self).visit_ID(n)
-				#self.warn('%s -> %s' % (prefix+super(self.__class__, self).visit_ID(n), super(self.__class__, self).visit_ID(n)))
-		#print n.name
-		newID = prefix + super(self.__class__, self).visit_ID(n)    
-		#print self.newIDs
+			self.varmap[prefix+super(self.__class__, self).visit_ID(n)] = super(self.__class__, self).visit_ID(n)
+			#self.warn('%s -> %s' % (prefix+super(self.__class__, self).visit_ID(n), super(self.__class__, self).visit_ID(n)))
 
-		return newID
-		#return prefix + super(self.__class__, self).visit_ID(n)
+		return prefix + super(self.__class__, self).visit_ID(n)
 
 
-	def _generate_type(self, n, modifiers=[]):
+	def _generate_type(self, n, modifiers=[], emit_declname = True):
 		""" Recursive generation from a type node. n is the type node.
-			modifiers collects the PtrDecl, ArrayDecl and FuncDecl modifiers
-			encountered on the way down to a TypeDecl, to allow proper
-			generation from it.
+		    modifiers collects the PtrDecl, ArrayDecl and FuncDecl modifiers
+		    encountered on the way down to a TypeDecl, to allow proper
+		    generation from it.
 		"""
 		typ = type(n)
 
@@ -221,40 +208,18 @@ class varnames(core.module.Translator):
 			# case 2: local variable declaration (thus excluding functions, global vars, struct-enum-union fields, nested parameters)
 			#
 			if self.__visitingParam == 1:                          # case 1
-				if self.__debug: print("SETTING NEWID for [%s,%s] (case I)") % (self.__currentFunction,n.declname)
-				#self.newIDs[self.__currentFunction,n.declname] = self.paramprefix + self.__currentFunction + '_'+self.inlineInfix  #S:
-				if (self.__currentFunction,n.declname) in  self.newIDs:
-					self.newIDs[self.__currentFunction,n.declname].append((self.paramprefix + self.__currentFunction + '_'+self.inlineInfix,self.__visitingCompound))  #S:
-				else: 
-					self.newIDs[self.__currentFunction,n.declname] = [(self.paramprefix + self.__currentFunction + '_'+self.inlineInfix,self.__visitingCompound)]
-				n.declname = (self.paramprefix + self.__currentFunction + '_' + self.inlineInfix + n.declname) if n.declname else '' #S:
+				if self.__debug: print("SETTING NEWID for [%s,%s] (case I)" % (self.__currentFunction,n.declname))
+				self.newIDs[self.__currentFunction,n.declname] = self.paramprefix + self.__currentFunction + '_'
+				n.declname = (self.paramprefix + self.__currentFunction + '_' + n.declname) if n.declname else ''
 			elif (self.__visitingParam == 0 and                    # case 2
-					self.__visitFuncDef == 0 and
-					n.declname not in self.Parser.funcName and
-					#n.declname not in self.Parser.varNames[''] and
-					self.__currentFunction != '' and
-					self.__visitStructUnionEnum == 0):
-				if self.__debug: print("SETTING NEWID for [%s,%s] (case II)") % (self.__currentFunction,n.declname)
-								#S: env.local, the followin two  lines are replaced with the following if
-								#self.newIDs[self.__currentFunction,n.declname] = self.prefix + self.__currentFunction + '_'
-				#n.declname = self.prefix + self.__currentFunction + '_' + n.declname if n.declname else ''
-				if self.__init: 
-					#self.newIDs[self.__currentFunction,n.declname] = self.prefix + self.__currentFunction + '_' +self.inlineInfix  #S:
-					if (self.__currentFunction,n.declname) in  self.newIDs:
-						self.newIDs[self.__currentFunction,n.declname].append((self.prefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound))  #S:
-					else: 
-						self.newIDs[self.__currentFunction,n.declname] = [(self.prefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound)]
-					n.declname = self.prefix + self.__currentFunction + '_' + self.inlineInfix + n.declname if n.declname else '' #S:
-				else:
-					#self.newIDs[self.__currentFunction,n.declname] = self.nondetprefix + self.__currentFunction + '_' +self.inlineInfix  #S:
-					if (self.__currentFunction,n.declname) in  self.newIDs:
-						self.newIDs[self.__currentFunction,n.declname].append((self.nondetprefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound))   #S:
-					else:
-						self.newIDs[self.__currentFunction,n.declname] = [(self.nondetprefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound)]
-					n.declname = self.nondetprefix + self.__currentFunction + '_' + self.inlineInfix + n.declname if n.declname else ''  #S:
-									
-								#print n.declname
-								#print self.newIDs
+			      self.__visitFuncDef == 0 and
+			      n.declname not in self.Parser.funcName and
+				  #n.declname not in self.Parser.varNames[''] and
+				  self.__currentFunction != '' and
+				  self.__visitStructUnionEnum == 0):
+				if self.__debug: print("SETTING NEWID for [%s,%s] (case II)" % (self.__currentFunction,n.declname))
+				self.newIDs[self.__currentFunction,n.declname] = self.prefix + self.__currentFunction + '_'
+				n.declname = self.prefix + self.__currentFunction + '_' + n.declname if n.declname else ''
 
 			nstr = n.declname if n.declname else ''
 
@@ -291,15 +256,7 @@ class varnames(core.module.Translator):
 
 
 
-		def visit_Compound(self, n):
-			self.__visitingCompound += 1
-			s = super(self.__class__, self).visit_Compound(n)
-			for key in self.newIDs:   #S: remove pairs that have been added in this compound
-				stack = self.newIDs[key] 
-				if stack and stack[-1][1] == self.__visitingCompound: 
-					stack.pop()
-			self.__visitingCompound -= 1
-			return s
+
 
 
 

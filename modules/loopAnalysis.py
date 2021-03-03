@@ -195,8 +195,8 @@ class loopAnalysis(core.module.Translator):
 						output.append(stringToStrip)
 						count += 1
 						if ICount == list[iList][1] and iList < len(list) - 1:
-								iList += 1
-								cRange = range(list[iList][0], list[iList][1] + 1)
+							iList += 1
+							cRange = range(list[iList][0], list[iList][1] + 1)
 						i = m
 					
 					else:

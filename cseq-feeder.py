@@ -153,6 +153,7 @@ class cseqenv:
 	wwDatarace = False    # True if requires that write-write datarace are on different written values
 	local = 2
 	inlineInfix = '$$$$'  # S: placeholder to insert counter value in function inlining, see varname.py and inliner.py
+	paths = False
 
 def parseChainCommand(s):
 	ret = {}
@@ -367,7 +368,7 @@ def main():
 	cseqenv.starttime = time.time()    # save wall time
 
 	# Extract the configuration from the command-line or set it to the default.
-	if " --dr " in cseqenv.cmdline:
+	if "--dr" in cseqenv.cmdline:
 		cseqenv.chainfile = "modules/%s.chain" % core.utils.extractparamvalue(cseqenv.cmdline, "-C", "--chain", core.config.defaultDRchain)
 	else:
 		cseqenv.chainfile = "modules/%s.chain" % core.utils.extractparamvalue(cseqenv.cmdline, "-C", "--chain", core.config.defaultchain)
