@@ -197,7 +197,7 @@ class varnames(core.module.Translator):
 		#return prefix + super(self.__class__, self).visit_ID(n)
 
 
-	def _generate_type(self, n, modifiers=[]):
+	def _generate_type(self, n, modifiers=[], emit_declname = True):
 		""" Recursive generation from a type node. n is the type node.
 			modifiers collects the PtrDecl, ArrayDecl and FuncDecl modifiers
 			encountered on the way down to a TypeDecl, to allow proper
