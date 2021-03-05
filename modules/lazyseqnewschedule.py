@@ -109,6 +109,8 @@ class lazyseqnewschedule(core.module.Translator):
 	# DR data for discarding clearly benign dataraces (i.e., when we have write-write of the same value
 	__dr_additionalCondition = '1'
 	__wwDatarace = False 
+	__enableDR = False
+	__noShadow = False
 
 	def init(self):
 		self.addInputParam('rounds', 'round-robin schedules', 'r', '1', False)
@@ -140,7 +142,7 @@ class lazyseqnewschedule(core.module.Translator):
 		backend = self.getInputParamValue('backend')
 		self.__wwDatarace = env.wwDatarace
 		self.__enableDR = env.enableDR
-
+		self.__noShadow = env.no_shadow
 		if self.getInputParamValue("preanalysis") is not None:
 			self.__preanalysis = self.getInputParamValue("preanalysis")
 			if env.debug:
@@ -314,6 +316,21 @@ class lazyseqnewschedule(core.module.Translator):
 		header += '_Bool __cs_dataraceSecondThread = 0; \n'   #DR
 		header += '_Bool __cs_dataraceNotDetected = 1; \n'   #DR
 		header += '_Bool __cs_dataraceContinue = 1; \n'   #DR
+		# DR API implementation
+		if self.__enableDR and self.__noShadow:
+			header += 'const void * shadowmem[SMSIZE]={0,0,0,0,0};\n\
+					int shadowmem_idx=0;\n\
+					void __CPROVER_field_decl_global(char* s,  _Bool b){\n\
+					}\n\
+					void __CPROVER_set_field(void* x, char* s, int b){\n\
+					shadowmem[shadowmem_idx]=x;\n\
+					shadowmem_idx++;\n\
+					}\n\
+					_Bool __CPROVER_get_field(void* x, char* s){\n\
+					return (shadowmem[0]==x || shadowmem[1]==x || shadowmem[2]==x \
+					|| shadowmem[3]==x || shadowmem[4]==x);\n\
+					}\n'
+
 		self.insertheader(header)
 
 		# Calculate exact bitwidth size for a few integer control variables of the seq. schema,

@@ -154,6 +154,7 @@ class cseqenv:
 	local = 2
 	inlineInfix = '$$$$'  # S: placeholder to insert counter value in function inlining, see varname.py and inliner.py
 	paths = False
+	no_shadow = False
 
 def parseChainCommand(s):
 	ret = {}
@@ -532,7 +533,7 @@ def main():
 					"no-simplify", "refine-arrays",
 					
 					#DataRace
-					"dr", "ww-datarace", "local-vars="]
+					"dr", "ww-datarace", "local-vars=", "no-shadow"]
 
 		# add one command-line parameter for each module-specific parameter
 		for p in cseqenv.params:
@@ -690,6 +691,9 @@ def main():
 			cseqenv.enableDR = True
 		elif o in ("--local-vars"):
 			cseqenv.local = int(a)
+		elif o in ("--no-shadow"):
+			cseqenv.no_shadow = True
+			cseqenv.local = 0
 
 		else:  # module-specific parameters
 			cseqenv.paramvalues[o[2:]] = a

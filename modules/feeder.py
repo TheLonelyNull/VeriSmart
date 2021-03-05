@@ -201,7 +201,10 @@ class feeder(core.module.BasicModule):
 		#Caledem
 		if backend == "cbmc":
 			if env.enableDR:
-				exe = "./cbmc-SM"
+				if env.no_shadow:
+					exe = "./cbmc-v5.10-static"
+				else:
+					exe = "./cbmc-SM"	
 			else:
 				exe = "./cbmc-v5.10-static"
 

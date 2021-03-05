@@ -72,6 +72,9 @@ class varnames(core.module.Translator):
 	__visitingCompound = 0 #S depth of nested blocks, used for var renaming
 	__init = None         #S added to handle local init
 	inlineInfix = ''            #S: added to copy inlineInfix from env passed in loadfromstring
+	# DR
+	__noShadow = False
+	__enableDr = False
 
 	def init(self):
 		self.addOutputParam('varnamesmap')
@@ -79,6 +82,8 @@ class varnames(core.module.Translator):
 
 	def loadfromstring(self, string, env):
 		self.inlineInfix = env.inlineInfix
+		self.__noShadow = env.no_shadow
+		self.__enableDR = env.enableDR
 		super(self.__class__, self).loadfromstring(string, env)
 		self.setOutputParam('varnamesmap', self.varmap)
 		#print str(self.newIDs).replace(', ','\n')
@@ -238,23 +243,30 @@ class varnames(core.module.Translator):
 								#S: env.local, the followin two  lines are replaced with the following if
 								#self.newIDs[self.__currentFunction,n.declname] = self.prefix + self.__currentFunction + '_'
 				#n.declname = self.prefix + self.__currentFunction + '_' + n.declname if n.declname else ''
-				if self.__init: 
-					#self.newIDs[self.__currentFunction,n.declname] = self.prefix + self.__currentFunction + '_' +self.inlineInfix  #S:
-					if (self.__currentFunction,n.declname) in  self.newIDs:
-						self.newIDs[self.__currentFunction,n.declname].append((self.prefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound))  #S:
-					else: 
-						self.newIDs[self.__currentFunction,n.declname] = [(self.prefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound)]
-					n.declname = self.prefix + self.__currentFunction + '_' + self.inlineInfix + n.declname if n.declname else '' #S:
+				# DR local
+				if self.__noShadow or not self.__enableDR:
+					self.newIDs[self.__currentFunction,n.declname] = self.prefix + self.__currentFunction + '_'
+					n.declname = self.prefix + self.__currentFunction + '_' + n.declname if n.declname else ''
+				# DR nondet
 				else:
-					#self.newIDs[self.__currentFunction,n.declname] = self.nondetprefix + self.__currentFunction + '_' +self.inlineInfix  #S:
-					if (self.__currentFunction,n.declname) in  self.newIDs:
-						self.newIDs[self.__currentFunction,n.declname].append((self.nondetprefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound))   #S:
+					if self.__init: 
+						#self.newIDs[self.__currentFunction,n.declname] = self.prefix + self.__currentFunction + '_' +self.inlineInfix  #S:
+						if (self.__currentFunction,n.declname) in  self.newIDs:
+							self.newIDs[self.__currentFunction,n.declname].append((self.prefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound))  #S:
+						else: 
+							self.newIDs[self.__currentFunction,n.declname] = [(self.prefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound)]
+						n.declname = self.prefix + self.__currentFunction + '_' + self.inlineInfix + n.declname if n.declname else '' #S:
 					else:
-						self.newIDs[self.__currentFunction,n.declname] = [(self.nondetprefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound)]
-					n.declname = self.nondetprefix + self.__currentFunction + '_' + self.inlineInfix + n.declname if n.declname else ''  #S:
-									
-								#print n.declname
-								#print self.newIDs
+						#self.newIDs[self.__currentFunction,n.declname] = self.nondetprefix + self.__currentFunction + '_' +self.inlineInfix  #S:
+						if (self.__currentFunction,n.declname) in  self.newIDs:
+							self.newIDs[self.__currentFunction,n.declname].append((self.nondetprefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound))   #S:
+						else:
+							self.newIDs[self.__currentFunction,n.declname] = [(self.nondetprefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound)]
+						n.declname = self.nondetprefix + self.__currentFunction + '_' + self.inlineInfix + n.declname if n.declname else ''  #S:
+										
+									#print n.declname
+									#print self.newIDs
+	
 
 			nstr = n.declname if n.declname else ''
 
