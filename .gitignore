@@ -1,5 +1,5 @@
-/examples
-log/
 *.pyc
-cbmc-SM
+examples/
+log/
 VerismartOLD/
+cbmc-SM

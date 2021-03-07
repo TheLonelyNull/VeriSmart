@@ -72,12 +72,14 @@ class loopAnalysis(core.module.Translator):
 		swarmdirname = dirname + "/" + filename[:-2] + '.swarm%s/' % env.suffix
 		instanceIterator = self.generateInstanceIterator(
 			env, configIterator, seqcode)
-
+		if env.instances_only:
+			sequentializationtime = time.time() - env.starttime
+			print("Time for producing $file = %0.2fs" % sequentializationtime)
 		if env.seq_only:
 			print("Sequentialization completed.")
 			sys.exit(0)
-		sequentializationtime = time.time() - env.starttime
-
+		
+		backendStart = time.time()
 		if env.isSwarm:
 			pool_size = env.cores
 			if pool_size == 0:
@@ -132,7 +134,10 @@ class loopAnalysis(core.module.Translator):
 		pool.close()
 		pool.join()
 
+		backendTime = time.time() - backendStart
+		
 		if env.instances_only:
+			print("Time for generating instances = %0.2fs" % backendTime )
 			print("Instances generated in " + swarmdirname)
 			sys.exit(0)
 
@@ -143,7 +148,7 @@ class loopAnalysis(core.module.Translator):
 					foundbug = True
 					foundtime = time.time() - env.starttime
 					break
-		backendtime = time.time() - sequentializationtime
+
 		totaltime = time.time() - env.starttime
 		if foundbug:
 			self.printIsUnsafe(totaltime, foundtime,
@@ -178,7 +183,7 @@ class loopAnalysis(core.module.Translator):
 					# First statement of thread
 					if count == 0:
 						for sub in (
-							("$I1", '__CSEQ_rawline("t%s_%s:");\n'% (tName, count)),
+							("$I1", ''),
 							("$I2", '__CSEQ_rawline("IF(%s,%s,t%s_%s)");' % (self.__threadIndex[tName], count, tName, count + 1)),
 							("$I3", "")):
     							stringToStrip = stringToStrip.replace(*sub)
@@ -195,8 +200,8 @@ class loopAnalysis(core.module.Translator):
 						output.append(stringToStrip)
 						count += 1
 						if ICount == list[iList][1] and iList < len(list) - 1:
-								iList += 1
-								cRange = range(list[iList][0], list[iList][1] + 1)
+							iList += 1
+							cRange = range(list[iList][0], list[iList][1] + 1)
 						i = m
 					
 					else:
@@ -345,18 +350,15 @@ class loopAnalysis(core.module.Translator):
 		for config in configIterator:
 			with open(config[0], "r") as config:		
 				maxlabels = {}
-				jsonConfig = (json.load(config))
+				jsonConfig = json.load(config)
 				configNumber, configintervals = dict(jsonConfig).popitem()
 				output = []
 				i = 0
 				startIndex = 0
-				headerEnd = 0
 				while i < len(self.__threadName):	
 					tName = self.__threadName[i]
 					startIndex, l = self.substitute(
 						seqCode, configintervals[tName], tName, startIndex, maxlabels)
-					if headerEnd == 0:
-						headerEnd = startIndex
 					listToStr = ''.join(s for s in l)
 					output.append(listToStr)
 					i += 1

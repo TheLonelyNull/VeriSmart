@@ -135,7 +135,9 @@ class inliner(core.module.Translator):
 
         if self.getInputParamValue('nondet-static') is not None:
             self.__nondet_static = True
-        # self.local = env.local  #S
+        # DR
+        if env.enableDR:
+            self.local = env.local  #S
         self.inlineInfix = env.inlineInfix  #S
 
         super(self.__class__, self).loadfromstring(string, env)
