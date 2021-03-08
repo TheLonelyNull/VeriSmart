@@ -84,6 +84,8 @@ class varnames(core.module.Translator):
 		self.inlineInfix = env.inlineInfix
 		self.__noShadow = env.no_shadow
 		self.__enableDR = env.enableDR
+		if self.__noShadow or not self.__enableDR:
+			self.nondetprefix = self.prefix
 		super(self.__class__, self).loadfromstring(string, env)
 		self.setOutputParam('varnamesmap', self.varmap)
 		#print str(self.newIDs).replace(', ','\n')
@@ -233,6 +235,7 @@ class varnames(core.module.Translator):
 				else: 
 					self.newIDs[self.__currentFunction,n.declname] = [(self.paramprefix + self.__currentFunction + '_'+self.inlineInfix,self.__visitingCompound)]
 				n.declname = (self.paramprefix + self.__currentFunction + '_' + self.inlineInfix + n.declname) if n.declname else '' #S:
+			
 			elif (self.__visitingParam == 0 and                    # case 2
 					self.__visitFuncDef == 0 and
 					n.declname not in self.Parser.funcName and
@@ -240,32 +243,26 @@ class varnames(core.module.Translator):
 					self.__currentFunction != '' and
 					self.__visitStructUnionEnum == 0):
 				if self.__debug: print("SETTING NEWID for [%s,%s] (case II)") % (self.__currentFunction,n.declname)
-								#S: env.local, the followin two  lines are replaced with the following if
-								#self.newIDs[self.__currentFunction,n.declname] = self.prefix + self.__currentFunction + '_'
+				#S: env.local, the followin two  lines are replaced with the following if
+				#self.newIDs[self.__currentFunction,n.declname] = self.prefix + self.__currentFunction + '_'
 				#n.declname = self.prefix + self.__currentFunction + '_' + n.declname if n.declname else ''
-				# DR local
-				if self.__noShadow or not self.__enableDR:
-					self.newIDs[self.__currentFunction,n.declname] = self.prefix + self.__currentFunction + '_'
-					n.declname = self.prefix + self.__currentFunction + '_' + n.declname if n.declname else ''
-				# DR nondet
+				if self.__init: 
+					#self.newIDs[self.__currentFunction,n.declname] = self.prefix + self.__currentFunction + '_' +self.inlineInfix  #S:
+					if (self.__currentFunction,n.declname) in  self.newIDs:
+						self.newIDs[self.__currentFunction,n.declname].append((self.prefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound))  #S:
+					else: 
+						self.newIDs[self.__currentFunction,n.declname] = [(self.prefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound)]
+					n.declname = self.prefix + self.__currentFunction + '_' + self.inlineInfix + n.declname if n.declname else '' #S:
 				else:
-					if self.__init: 
-						#self.newIDs[self.__currentFunction,n.declname] = self.prefix + self.__currentFunction + '_' +self.inlineInfix  #S:
-						if (self.__currentFunction,n.declname) in  self.newIDs:
-							self.newIDs[self.__currentFunction,n.declname].append((self.prefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound))  #S:
-						else: 
-							self.newIDs[self.__currentFunction,n.declname] = [(self.prefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound)]
-						n.declname = self.prefix + self.__currentFunction + '_' + self.inlineInfix + n.declname if n.declname else '' #S:
+					#self.newIDs[self.__currentFunction,n.declname] = self.nondetprefix + self.__currentFunction + '_' +self.inlineInfix  #S:
+					if (self.__currentFunction,n.declname) in  self.newIDs:
+						self.newIDs[self.__currentFunction,n.declname].append((self.nondetprefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound))   #S:
 					else:
-						#self.newIDs[self.__currentFunction,n.declname] = self.nondetprefix + self.__currentFunction + '_' +self.inlineInfix  #S:
-						if (self.__currentFunction,n.declname) in  self.newIDs:
-							self.newIDs[self.__currentFunction,n.declname].append((self.nondetprefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound))   #S:
-						else:
-							self.newIDs[self.__currentFunction,n.declname] = [(self.nondetprefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound)]
-						n.declname = self.nondetprefix + self.__currentFunction + '_' + self.inlineInfix + n.declname if n.declname else ''  #S:
-										
-									#print n.declname
-									#print self.newIDs
+						self.newIDs[self.__currentFunction,n.declname] = [(self.nondetprefix + self.__currentFunction + '_' +self.inlineInfix,self.__visitingCompound)]
+					n.declname = self.nondetprefix + self.__currentFunction + '_' + self.inlineInfix + n.declname if n.declname else ''  #S:
+									
+				#print n.declname
+				#print self.newIDs
 	
 
 			nstr = n.declname if n.declname else ''

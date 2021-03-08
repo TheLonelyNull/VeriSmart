@@ -184,7 +184,7 @@ class conditionextractor(core.module.Translator):
         fref = self._parenthesize_unless_simple(n.name)
         args = self.visit(n.args)
 
-        if fref in self.Parser.funcBody:
+        if fref in self.Parser.funcBlockIn:
             self.funcCallFound = True
 
         if n.args is None:
