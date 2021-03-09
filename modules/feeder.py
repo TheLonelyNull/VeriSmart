@@ -178,13 +178,19 @@ class feeder(core.module.BasicModule):
 
 		#Caledem
 		if env.enableDR:
-			seqfile = core.utils.rreplace(env.inputfile, '/', '/_dr_', 1) if '/' in env.inputfile else '_dr_' + env.inputfile
+			if env.no_shadow:
+				seqfile = core.utils.rreplace(env.inputfile, '/', '/_drcs_', 1) if '/' in env.inputfile else '_drcs_' + env.inputfile
+			else:
+				seqfile = core.utils.rreplace(env.inputfile, '/', '/_dr_', 1) if '/' in env.inputfile else '_dr_' + env.inputfile
 		else:
 			seqfile = core.utils.rreplace(env.inputfile, '/', '/_cs_', 1) if '/' in env.inputfile else '_cs_' + env.inputfile
 
 		if env.isSwarm:
 			if env.enableDR:
-				seqfile = env.inputfile[:-2] + '.swarm%s/' % env.suffix+ "_dr_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
+				if env.no_shadow:
+					seqfile = env.inputfile[:-2] + '.swarm%s/' % env.suffix+ "_drcs_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
+				else:
+					seqfile = env.inputfile[:-2] + '.swarm%s/' % env.suffix+ "_dr_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
 			else:
 				seqfile = env.inputfile[:-2] + '.swarm%s/' % env.suffix+ "_cs_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
 
