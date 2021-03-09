@@ -291,7 +291,10 @@ class dr_instrumenter(core.module.Translator):
 		
 		#Caledem
 		if env.isSwarm:
-			filename = self.__swarmdirname + "_drsw_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
+			if env.no_shadow:
+				filename = self.__swarmdirname + "_dr_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
+			else:
+				filename = self.__swarmdirname + "_drsw_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
 			os.makedirs(os.path.dirname(filename), exist_ok=True)
 			utils.saveFile(filename, self.output)
 
