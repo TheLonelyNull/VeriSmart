@@ -177,10 +177,18 @@ class feeder(core.module.BasicModule):
 		'''
 
 		#Caledem
-		seqfile = core.utils.rreplace(env.inputfile, '/', '/_cs_', 1) if '/' in env.inputfile else '_cs_' + env.inputfile
+		if env.enableDR:
+			seqfile = core.utils.rreplace(env.inputfile, '/', '/_dr_', 1) if '/' in env.inputfile else '_dr_' + env.inputfile
+		else:
+			seqfile = core.utils.rreplace(env.inputfile, '/', '/_cs_', 1) if '/' in env.inputfile else '_cs_' + env.inputfile
 
 		if env.isSwarm:
-			seqfile = env.inputfile[:-2] + '.swarm%s/' % env.suffix+ "_cs_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
+			if env.enableDR:
+				seqfile = env.inputfile[:-2] + '.swarm%s/' % env.suffix+ "_dr_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
+			else:
+				seqfile = env.inputfile[:-2] + '.swarm%s/' % env.suffix+ "_cs_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
+
+			
 
 		if env.outputfile is not None and env.outputfile != '':
 			seqfile = env.outputfile
