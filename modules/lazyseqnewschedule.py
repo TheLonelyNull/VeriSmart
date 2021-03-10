@@ -432,7 +432,7 @@ class lazyseqnewschedule(core.module.Translator):
 	def dr_state1(self,thread,lab,code):
 		newcode = ''
 		if self.__sharedVarsW:
-			newcode += 'if ( (%s == __cs_pc_cs[%s]) & __cs_dataraceDetectionStarted & !__cs_dataraceSecondThread) {\n' % (lab,thread)
+			newcode += 'if ( ($L == __cs_pc_cs[%s]) & __cs_dataraceDetectionStarted & !__cs_dataraceSecondThread) {\n' % (thread)
 			#print self.__sharedVarsW
 			for v in self.__sharedVarsW:
 				newcode += '__CPROVER_set_field(%s,"dr_write",1);\n' % v 
@@ -461,9 +461,9 @@ class lazyseqnewschedule(core.module.Translator):
 
 		if condition != '':
 			if self.__wwDatarace:
-				code += 'if ( (%s == __cs_pc[%s]) & __cs_dataraceSecondThread & (%s) & (%s)) __cs_dataraceNotDetected = 0;' % (lab,thread,self.__dr_additionalCondition,condition)
+				code += 'if ( ($L == __cs_pc[%s]) & __cs_dataraceSecondThread & (%s) & (%s)) __cs_dataraceNotDetected = 0;' % (thread,self.__dr_additionalCondition,condition)
 			else:
-				code += 'if ( (%s == __cs_pc[%s]) & __cs_dataraceSecondThread & (%s)) __cs_dataraceNotDetected = 0;' % (lab,thread,condition)
+				code += 'if ( ($L == __cs_pc[%s]) & __cs_dataraceSecondThread & (%s)) __cs_dataraceNotDetected = 0;' % (thread,condition)
 		return code
 		
 	def dr_codeParts(self, stmt, thread, lab):
@@ -1549,7 +1549,7 @@ class lazyseqnewschedule(core.module.Translator):
 				if ts <= maxts :   #DR
 					  main +="             if(__cs_dr_ts == %s) __cs_dataraceDetectionStarted=1;\n" % ts #DR
 				main +="             %s(__cs_threadargs[%s]);\n" % (t, i)
-				main +="             if(__cs_dataraceSecondThread & (__cs_tmp_t%s_r0 > 0)) __cs_dataraceContinue=0;\n" % i #DR
+				main +="             if(__cs_dataraceSecondThread & (__cs_tmp_t%s_r0 > __cs_pc[%s])) __cs_dataraceContinue=0;\n" % (i,i) #DR
 				if ts <= maxts :   #DR
 					  main +="             if(__cs_dataraceDetectionStarted) __cs_dataraceSecondThread=1;\n"  #DR
 				#main +="             __CSEQ_assume(__cs_is_por_exec);\n" #DR
@@ -1568,7 +1568,7 @@ class lazyseqnewschedule(core.module.Translator):
 			#main +="__CSEQ_rawline(\"__cs_ts=%s;\");\n" % (round * (self.__threadbound+1))   #POR
 			#main +="__CSEQ_rawline(\"__cs_tsplusone=%s;\");\n" % ( (round+1) * ( self.__threadbound+1) )  #POR
 			main +="          unsigned int __cs_tmp_t%s_r%s %s;\n" % (self.__threadIndex['main'],round, self.__extra_nondet)
-			main +="          if (__cs_dr_ts > %s &  __cs_dataraceContinue & __cs_active_thread[0]) {\n" %  (ts - (self.__threadbound+1))          #DR
+			main +="          if (__cs_dr_ts > %s &  __cs_dataraceContinue & __cs_active_thread[%s]) {\n" %  (ts - (self.__threadbound+1), self.__threadIndex['main'])          #DR
 			if self.__guess_cs_only:
 				main +="             __cs_pc_cs[%s] = __cs_tmp_t%s_r%s;\n" % (self.__threadIndex['main'], self.__threadIndex['main'], round)
 			else:
@@ -1578,7 +1578,7 @@ class lazyseqnewschedule(core.module.Translator):
 			if ts <= maxts :   #DR
 				main +="             if(__cs_dr_ts == %s) __cs_dataraceDetectionStarted=1;\n" % ts  #DR
 			main +="             __cs_main_thread();\n"
-			main +="             if(__cs_dataraceSecondThread & (__cs_tmp_t%s_r%s > 0)) __cs_dataraceContinue=0;\n" % (self.__threadIndex['main'], round) #DR
+			main +="             if(__cs_dataraceSecondThread & (__cs_tmp_t%s_r%s > __cs_pc[%s])) __cs_dataraceContinue=0;\n" % (self.__threadIndex['main'], round, self.__threadIndex['main']) #DR
 			if ts <= maxts :   #DR
 				main +="             if(__cs_dataraceDetectionStarted) __cs_dataraceSecondThread=1;\n"  #DR
 			#main +="             __CSEQ_assume(__cs_is_por_exec);\n" #POR
@@ -1609,7 +1609,7 @@ class lazyseqnewschedule(core.module.Translator):
 					if ts <= maxts :   #DR
 						 main +="             if(__cs_dr_ts == %s) __cs_dataraceDetectionStarted=1;\n" %  ts #DR
 					main +="             %s(__cs_threadargs[%s]);\n" % (t, i)
-					main +="             if(__cs_dataraceSecondThread & (__cs_tmp_t%s_r%s > 0)) __cs_dataraceContinue=0;\n" % (i,round) #DR
+					main +="             if(__cs_dataraceSecondThread & (__cs_tmp_t%s_r%s > __cs_pc[%s])) __cs_dataraceContinue=0;\n" % (i,round, i) #DR
 					if ts <= maxts :   #DR
 						 main +="             if(__cs_dataraceDetectionStarted) __cs_dataraceSecondThread=1;\n"  #DR
 					#main +="             __CSEQ_assume(__cs_is_por_exec);\n" #POR
