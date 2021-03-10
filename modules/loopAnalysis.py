@@ -383,9 +383,6 @@ class loopAnalysis(core.module.Translator):
 				m.loadfromstring(output, env)
 				output = m.getoutput()
 
-				#Exit on instrumenter (to find a better way)
-				if env.instances_only:
-					return True
 
 				# linemapping only works on Translator (C-to-C) modules
 				if "inputtooutput" in dir(m):
@@ -396,6 +393,8 @@ class loopAnalysis(core.module.Translator):
 				print("Chain interrupted by user")
 				sys.exit(1)
 
+		if env.instances_only:
+			return True
 		cbmcresult = output[0]
 		memsize = output[1]
 		processedResult = self.processResult(cbmcresult, env.backend)

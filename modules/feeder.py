@@ -177,32 +177,37 @@ class feeder(core.module.BasicModule):
 		'''
 
 		#Caledem
-		if env.enableDR:
-			if env.no_shadow:
-				seqfile = core.utils.rreplace(env.inputfile, '/', '/_drcs_', 1) if '/' in env.inputfile else '_drcs_' + env.inputfile
-			else:
-				seqfile = core.utils.rreplace(env.inputfile, '/', '/_dr_', 1) if '/' in env.inputfile else '_dr_' + env.inputfile
-		else:
-			seqfile = core.utils.rreplace(env.inputfile, '/', '/_cs_', 1) if '/' in env.inputfile else '_cs_' + env.inputfile
-
 		if env.isSwarm:
 			if env.enableDR:
 				if env.no_shadow:
-					seqfile = env.inputfile[:-2] + '.swarm%s/' % env.suffix+ "_drcs_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
+					seqfile = env.inputfile[:-2] + '.swarm%s/' % env.suffix+ "_csdr_ns_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
 				else:
-					seqfile = env.inputfile[:-2] + '.swarm%s/' % env.suffix+ "_dr_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
+					seqfile = env.inputfile[:-2] + '.swarm%s/' % env.suffix+ "_csdr_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
 			else:
 				seqfile = env.inputfile[:-2] + '.swarm%s/' % env.suffix+ "_cs_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
 
-			
+		else:
+			if env.enableDR:
+				if env.no_shadow:
+					seqfile = core.utils.rreplace(env.inputfile, '/', '/_csdr_ns_', 1) if '/' in env.inputfile else '_csdr_ns_' + env.inputfile
+				else:
+					seqfile = core.utils.rreplace(env.inputfile, '/', '/_csdr_', 1) if '/' in env.inputfile else '_csdr_' + env.inputfile
+			else:
+				seqfile = core.utils.rreplace(env.inputfile, '/', '/_cs_', 1) if '/' in env.inputfile else '_cs_' + env.inputfile
+
 
 		if env.outputfile is not None and env.outputfile != '':
 			seqfile = env.outputfile
 
 		logfile = seqfile + '.' + backend + '.log' if witness is None else witness
-
+		
+		os.makedirs(os.path.dirname(seqfile), exist_ok=True)
 		core.utils.saveFile(seqfile, string)
 
+		if env.instances_only:
+			return True
+
+		
 		''' Run the verification tool on the input file '''
 		# if self.verbose: print "output: %s" % (seqfile)
 		timeBeforeCallingBackend = time.time()    # save wall time

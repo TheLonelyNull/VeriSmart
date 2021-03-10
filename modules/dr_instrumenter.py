@@ -4,6 +4,7 @@
 	to verifier-specific assume
 """
 import os
+import sys
 
 from bin import utils
 
@@ -288,15 +289,7 @@ class dr_instrumenter(core.module.Translator):
 		self.insertheader(core.utils.printFile('modules/pthread_defs.c'))
 
 		self.insertheader(self._generateheader())  # top comment with translation parameters
-		
-		#Caledem
-		if env.isSwarm:
-			if env.no_shadow:
-				filename = self.__swarmdirname + "_dr_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
-			else:
-				filename = self.__swarmdirname + "_drsw_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
-			os.makedirs(os.path.dirname(filename), exist_ok=True)
-			utils.saveFile(filename, self.output)
+
 
 	def _get_type_by_bits(self, numbit):
 		if numbit <= 8: return 'char'

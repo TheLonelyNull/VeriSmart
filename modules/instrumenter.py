@@ -223,6 +223,7 @@ class instrumenter(core.module.Translator):
 			'__cs_thread_index'
 		]
 
+
 		super(self.__class__, self).loadfromstring(string, env)
 		self.lastoutputlineno = 0
 		self.removelinenumbers()
@@ -283,17 +284,7 @@ class instrumenter(core.module.Translator):
 
 		self.insertheader(self._generateheader())  # top comment with translation parameters
 		
-		#Caledem
-		if env.isSwarm:
-			if env.enableDR:
-				if env.no_shadow:
-					filename = self.__swarmdirname + "_drcs_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
-				else:
-					filename = self.__swarmdirname + "_dr_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
-			else:
-				filename = self.__swarmdirname + "_cs_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
-			os.makedirs(os.path.dirname(filename), exist_ok=True)
-			utils.saveFile(filename, self.output)
+
 
 
 	def _get_type_by_bits(self, numbit):
