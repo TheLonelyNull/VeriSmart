@@ -100,6 +100,7 @@ class loopAnalysis(core.module.Translator):
 		manager = multiprocessing.Manager()
 		results = manager.Queue()
 		foundbug = False
+		error = False
 		foundtime = 0
 		sentinel = object()
 
@@ -116,6 +117,8 @@ class loopAnalysis(core.module.Translator):
 													 filename[:-2],), callback=logResults)
 			for instance, confignumber, configintervals in instanceIterator:
 				out = results.get()
+				if out == "ERROR":
+					error = True
 				if out is False and not foundbug:
 					foundtime = time.time() - env.starttime
 					foundbug = True
@@ -148,8 +151,15 @@ class loopAnalysis(core.module.Translator):
 					foundbug = True
 					foundtime = time.time() - env.starttime
 					break
-
+				if out == "ERROR":
+					error = True
+					break	
+			
 		totaltime = time.time() - env.starttime
+		
+		if error:
+			self.printError(totaltime, env.inputfile, env.isSwarm)
+			return
 		if foundbug:
 			self.printIsUnsafe(totaltime, foundtime,
 							   env.inputfile, env.isSwarm)
@@ -406,11 +416,21 @@ class loopAnalysis(core.module.Translator):
 				self.printNoFoundBug(confignumber.replace(
 					"s", ""), memsize, analysistime)
 			return True
-		if processedResult == "FALSE":
+		elif processedResult == "FALSE":
 			if env.isSwarm:
 				self.printFoundBug(confignumber.replace(
 					"s", ""), memsize, analysistime)
 			return False
+
+		else:
+			if env.isSwarm:
+				self.printUnknown(confignumber.replace(
+					"s", ""))
+			return "ERROR"
+		sys.stdout.flush()
+
+	def printUnknown(self, index):
+		print("{0:10}{1:20}".format("[#" + str(index) + "]", utils.colors.YELLOW + "UNKNOWN" + utils.colors.NO,))
 		sys.stdout.flush()
 
 	def printNoFoundBug(self, index, memsize, analysistime):
@@ -438,6 +458,13 @@ class loopAnalysis(core.module.Translator):
 			print("Found time : " + "%0.2fs" % foundtime)
 		print(inputfile + utils.colors.RED + " FALSE " +
 			  utils.colors.NO + ", %0.2fs" % totalTime)
+		sys.stdout.flush()
+
+	def printError(self, totalTime, inputfile, isSwarm):
+		if isSwarm:
+			print("======================================================")
+		print(inputfile + utils.colors.YELLOW + " UNKNOWN " +
+			utils.colors.NO + ", %0.2fs" % totalTime)
 		sys.stdout.flush()
 
 	def processResult(self, result, format):
