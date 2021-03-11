@@ -1528,7 +1528,7 @@ class lazyseqnewschedule(core.module.Translator):
 		main +="          __CSEQ_assume(__cs_pc_cs[%s] > 0);\n" % self.__threadIndex['main']
 		main +="          __CSEQ_assume(__cs_pc_cs[%s] <= %s);\n" % (self.__threadIndex['main'], "$ML" + str(self.__threadIndex['main']))
 		main +="          if(__cs_dr_ts == 0) __cs_dataraceDetectionStarted=1;\n"
-		main +="          __cs_main_thread();\n"
+		main +="          main_thread();\n"
 		main +="          if(__cs_dataraceDetectionStarted) __cs_dataraceSecondThread=1;\n"  #DR
 		main +="          __cs_pc[%s] = __cs_pc_cs[%s];\n"   % (self.__threadIndex['main'], self.__threadIndex['main'])
 		main +="\n"
@@ -1577,7 +1577,7 @@ class lazyseqnewschedule(core.module.Translator):
 			main +="             __CSEQ_assume(__cs_pc_cs[%s] <= %s);\n" % (self.__threadIndex['main'], "$ML" + str(self.__threadIndex['main']))
 			if ts <= maxts :   #DR
 				main +="             if(__cs_dr_ts == %s) __cs_dataraceDetectionStarted=1;\n" % ts  #DR
-			main +="             __cs_main_thread();\n"
+			main +="             main_thread();\n"
 			main +="             if(__cs_dataraceSecondThread & (__cs_tmp_t%s_r%s > __cs_pc[%s])) __cs_dataraceContinue=0;\n" % (self.__threadIndex['main'], round, self.__threadIndex['main']) #DR
 			if ts <= maxts :   #DR
 				main +="             if(__cs_dataraceDetectionStarted) __cs_dataraceSecondThread=1;\n"  #DR

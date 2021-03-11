@@ -1,4 +1,4 @@
-unsigned int __cs_active_thread[<insert-numthreads-here>]={1};
+unsigned int __cs_active_thread[<insert-numthreads-here>]={};
 unsigned int __cs_pc[<insert-numthreads-here>];
 unsigned int __cs_pc_cs[<insert-numthreads-here>];
 unsigned int __cs_last_thread;
