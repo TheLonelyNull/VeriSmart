@@ -1412,6 +1412,8 @@ class lazyseqnewschedule(core.module.Translator):
 		# Main thread
 		main += "__CSEQ_rawline(\"/* round  %s */\");\n" % round
 		main += "__CSEQ_rawline(\"    /* main */\");\n"
+		#caledem
+		main += "__cs_active_thread[%s] = 1;\n" % self.__threadIndex['main']
 		main += "          unsigned int __cs_tmp_t%s_r0 %s;\n" % (self.__threadIndex['main'], self.__extra_nondet)
 		main += "          __cs_pc_cs[%s] = __cs_tmp_t%s_r0;\n" % (self.__threadIndex['main'], self.__threadIndex['main'])
 		main += "          __CSEQ_assume(__cs_pc_cs[%s] > 0);\n" % self.__threadIndex['main']
@@ -1523,6 +1525,8 @@ class lazyseqnewschedule(core.module.Translator):
 		# Main thread
 		main +="__CSEQ_rawline(\"/* round  %s */\");\n" % round
 		main +="__CSEQ_rawline(\"    /* main */\");\n"
+		#caledem
+		main +="__cs_active_thread[%s] = 1;\n" % self.__threadIndex['main']
 		main +="          unsigned int __cs_tmp_t%s_r0 %s;\n" % (self.__threadIndex['main'], self.__extra_nondet)
 		main +="          __cs_pc_cs[%s] = __cs_tmp_t%s_r0;\n" % (self.__threadIndex['main'], self.__threadIndex['main'])
 		main +="          __CSEQ_assume(__cs_pc_cs[%s] > 0);\n" % self.__threadIndex['main']
