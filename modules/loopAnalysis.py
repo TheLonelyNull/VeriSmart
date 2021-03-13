@@ -27,7 +27,7 @@ class loopAnalysis(core.module.Translator):
 	def init(self):
 		pass
 
-	def loadfromstring(self, seqcode, env):
+	def loadfromstring(self, seqcode, env, fill_only_fields=None):
 
 		self.__lines = self.getInputParamValue('lines')
 		self.__threadName = self.getInputParamValue('threadNames')

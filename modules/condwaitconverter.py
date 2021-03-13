@@ -44,3 +44,6 @@ class condwaitconverter(core.module.Translator):
 
         return fref + '(' + self.visit(n.args) + ')'
         return super(self.__class__, self).visit_FuncCall(n)
+
+    def loadfromstring(self, string, env, fill_only_fields=None):
+        super(self.__class__, self).loadfromstring(string, env, fill_only_fields=[])

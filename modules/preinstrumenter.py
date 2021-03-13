@@ -3,8 +3,8 @@
     written by Omar Inverso, University of Southampton.
     maintained by Truc Nguyen Lam, University of Southampton.
 """
-VERSION = 'preinstrumenter-2015.07.02' # merged with errorlabel-0.0-2015.06.25
-#VERSION = 'preinstrumenter-0.0-2015.06.25'
+VERSION = 'preinstrumenter-2015.07.02'  # merged with errorlabel-0.0-2015.06.25
+# VERSION = 'preinstrumenter-0.0-2015.06.25'
 """
     Conceptually this module performs two tasks:
         1. convert input to use __CSEQ_assert() __CSEQ_assume() from any known equivalent primitive
@@ -40,6 +40,7 @@ Changelog:
 import core.common, core.module
 import pycparser.c_ast
 
+
 class preinstrumenter(core.module.Translator):
     __errorlabel = ''
 
@@ -58,13 +59,12 @@ class preinstrumenter(core.module.Translator):
     def init(self):
         self.addInputParam('error-label', 'error label for reachability check', 'l', 'ERROR', False)
 
-
-    def loadfromstring(self, string, env):
+    def loadfromstring(self, string, env, fill_only_fields=None):
         self.__errorlabel = self.getInputParamValue('error-label')
         backend = self.getInputParamValue('backend')
         if backend == 'klee' and 'malloc' in core.common.changeID:
-            core.common.changeID['malloc'] = 'malloc'   # use normal malloc
-        super(self.__class__, self).loadfromstring(string, env)
+            core.common.changeID['malloc'] = 'malloc'  # use normal malloc
+        super(self.__class__, self).loadfromstring(string, env, fill_only_fields=['funcBlock'])
 
     '''
     def visit_Assignment(self, n):
@@ -78,12 +78,11 @@ class preinstrumenter(core.module.Translator):
         return '%s %s %s' % (self.visit(n.lvalue), n.op, rval_str)
     '''
 
-
     def visit_Goto(self, n):
         if n.name == self.__errorlabel:
             return '__CSEQ_assert(0);'
-        else: return 'goto ' + n.name + ';'
-
+        else:
+            return 'goto ' + n.name + ';'
 
     def visit_Label(self, n):
         ##### print "visiting LABEL, coords = %s\n" % self.Parser.nodecoords[n]
@@ -92,7 +91,6 @@ class preinstrumenter(core.module.Translator):
             return '__CSEQ_assert(0);'
         else:
             return n.name + ':\n' + self._generate_stmt(n.stmt)
-
 
     def visit_ID(self, n):
         if n.name.startswith('pthread_') and n.name not in core.common.changeID and n.name not in self.Parser.funcBlock:
@@ -104,8 +102,8 @@ class preinstrumenter(core.module.Translator):
 
         return n.name
 
-
     ''' converts function calls '''
+
     def visit_FuncCall(self, n):
         fref = self._parenthesize_unless_simple(n.name)
 
@@ -114,25 +112,25 @@ class preinstrumenter(core.module.Translator):
         if fref in self.namesmapping:
             fref = self.namesmapping[fref]
         elif fref.startswith('__VERIFIER_atomic_'):
-            fref = '__CSEQ_atomic_'+fref[18:]
+            fref = '__CSEQ_atomic_' + fref[18:]
         elif fref.startswith('__CPROVER_atomic_'):
-            fref = '__CSEQ_atomic_'+fref[17:]
-        elif fref.startswith('__VERIFIER_nondet_'):   # Transformation 5
-            fref = '__CSEQ_nondet_'+fref[18:]
+            fref = '__CSEQ_atomic_' + fref[17:]
+        elif fref.startswith('__VERIFIER_nondet_'):  # Transformation 5
+            fref = '__CSEQ_nondet_' + fref[18:]
 
         if fref in core.common.changeID:
             fref = core.common.changeID[fref]
 
-        #if fref == 'malloc':
+        # if fref == 'malloc':
 
         return fref + '(' + args + ')'
 
-
     ''' converts function definitions '''
+
     def visit_FuncDef(self, n):
         decl = self.visit(n.decl)
 
-        #if '__VERIFIER_atomic' in decl:
+        # if '__VERIFIER_atomic' in decl:
         #   decl = decl.replace('__VERIFIER_atomic', core.common.funcPrefixChange['__VERIFIER_atomic'], 1)
 
         if n.decl.name.startswith('__VERIFIER_atomic_'):
@@ -146,8 +144,8 @@ class preinstrumenter(core.module.Translator):
         else:
             return decl + '\n' + body + '\n'
 
-
     ''' converts function prototypes '''
+
     def visit_Decl(self, n, no_type=False):
         # no_type is used when a Decl is part of a DeclList, where the type is
         # explicitly only for the first delaration in a list.
@@ -166,13 +164,12 @@ class preinstrumenter(core.module.Translator):
             else:
                 s += ' = ' + self.visit(n.init)
 
-        #print "type: %s   decl: %s\n" % (n.storage, n.name)
+        # print "type: %s   decl: %s\n" % (n.storage, n.name)
         for expr in core.common.changeID:
-            if s.startswith(expr+' '):
-                s = s.replace(expr+' ', core.common.changeID[expr]+' ')
+            if s.startswith(expr + ' '):
+                s = s.replace(expr + ' ', core.common.changeID[expr] + ' ')
 
         return s
-
 
     def visit_IdentifierType(self, n):
         s = ' '.join(n.names)
@@ -181,7 +178,6 @@ class preinstrumenter(core.module.Translator):
             s = core.common.changeID[s]
 
         return s
-
 
     def visit_Typename(self, n):
         s = self._generate_type(n.type)

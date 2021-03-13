@@ -80,11 +80,11 @@ class varnames(core.module.Translator):
 		self.addOutputParam('varnamesmap')
 
 
-	def loadfromstring(self, string, env):
+	def loadfromstring(self, string, env, fill_only_fields=None):
 		self.inlineInfix = env.inlineInfix
 		self.__noShadow = env.no_shadow
 		self.__enableDR = env.enableDR
-		super(self.__class__, self).loadfromstring(string, env)
+		super(self.__class__, self).loadfromstring(string, env, fill_only_fields=['varNames', 'funcName'])
 		self.setOutputParam('varnamesmap', self.varmap)
 		#print str(self.newIDs).replace(', ','\n')
 

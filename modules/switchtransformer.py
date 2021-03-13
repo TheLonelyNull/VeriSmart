@@ -184,3 +184,6 @@ class switchtransformer(core.module.Translator):
                 self.__currentFunction, self.__currentSwitchCount)
         else:
             return 'break;'
+
+    def loadfromstring(self, string, env, fill_only_fields=None):
+        super(self.__class__, self).loadfromstring(string, env, fill_only_fields=[])

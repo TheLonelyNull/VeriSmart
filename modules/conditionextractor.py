@@ -194,6 +194,8 @@ class conditionextractor(core.module.Translator):
 
         return inl
 
+    def loadfromstring(self, string, env, fill_only_fields=None):
+        super(self.__class__, self).loadfromstring(string, env, fill_only_fields=['funcBody'])
 
 
 

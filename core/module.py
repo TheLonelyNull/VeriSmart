@@ -363,12 +363,12 @@ class Translator(BasicModule,pycparser.c_generator.CGenerator):
 
 		self.output = s2
 
-	def loadfromstring(self,string,env):
+	def loadfromstring(self,string,env, fill_only_fields=None):
 		super(Translator,self).loadfromstring(string,env)
 
 		self.input = string
 		self.Parser.reset()  # resets all the parser datastructs
-		self.Parser.loadfromstring(string)
+		self.Parser.loadfromstring(string, fill_only_fields)
 		self.ast = self.Parser.ast
 		self.output = self.visit(self.ast)
 

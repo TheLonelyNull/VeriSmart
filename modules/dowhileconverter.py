@@ -134,5 +134,7 @@ class dowhileconverter(core.module.Translator):
         if len(self.__visit_jump_stack) > 0: self.__visit_jump_stack[-1] = True
         return 'continue;'
 
+    def loadfromstring(self, string, env, fill_only_fields=None):
+        super(self.__class__, self).loadfromstring(string, env, fill_only_fields=[])
 
 

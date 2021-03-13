@@ -3,7 +3,7 @@
     maintained by Truc Nguyen Lam, University of Southampton
 """
 VERSION = 'constants-0.0-2014.12.24'  # CSeq-1.0beta
-#VERSION = 'constants-0.0-2014.12.09'
+# VERSION = 'constants-0.0-2014.12.09'
 ##VERSION = 'constants-0.0-2014.10.26'    # CSeq-Lazy-0.6: newseq-0.6a, newseq-0.6c, SVCOMP15
 ###VERSION = 'constants-0.0-2014.10.15'
 ####VERSION = 'constants-0.0-2014.03.14' (CSeq-Lazy-0.4)
@@ -80,7 +80,6 @@ class constants(core.module.Translator):
         else:
             return decl + '\n' + body + '\n'
 
-
     def visit_Assignment(self, n):
         oldGlobalMemoryAccessed = self.__globalMemoryAccessed
         globalAccess = False
@@ -101,9 +100,10 @@ class constants(core.module.Translator):
                 type(n.rvalue) == pycparser.c_ast.BinaryOp and
                 self.__myparser.getHasConsidervar() and
                 self.__getType(self.__currentFunction, lval_str) != "UNKNOWN"
-            ):
-            self.__temp_var_no += 1    # Declare a temporary variable for this statement
-            ret = '; %s __cs_temporary_%s = 0; __cs_temporary_%s = %s; ' % (self.__getType(self.__currentFunction, lval_str), self.__temp_var_no, self.__temp_var_no, lval_str)
+        ):
+            self.__temp_var_no += 1  # Declare a temporary variable for this statement
+            ret = '; %s __cs_temporary_%s = 0; __cs_temporary_%s = %s; ' % (
+            self.__getType(self.__currentFunction, lval_str), self.__temp_var_no, self.__temp_var_no, lval_str)
             newrval_str = " " + rval_str + " "
             newrval_str = newrval_str.replace(" %s " % lval_str, ' __cs_temporary_%s ' % self.__temp_var_no, 1).strip()
             ret += '%s %s %s' % (lval_str, n.op, newrval_str)
@@ -112,29 +112,33 @@ class constants(core.module.Translator):
 
         return ret
 
-
     def visit_ID(self, n):
         # If this ID corresponds either to a global variable,
         # or to a pointer...
         #
-        if ((self.__isGlobal(self.__currentFunction, n.name) or self.__isPointer(self.__currentFunction, n.name)) and not n.name.startswith('__cs_thread_local_')):
+        if ((self.__isGlobal(self.__currentFunction, n.name) or self.__isPointer(self.__currentFunction,
+                                                                                 n.name)) and not n.name.startswith(
+                '__cs_thread_local_')):
             self.__globalMemoryAccessed = True
         return n.name
-
 
     # Checks whether variable  v  from function  f  is a pointer.
     #
     def __isPointer(self, f, v):
-        if v in self.Parser.varNames[f] and self.Parser.varType[f,v].endswith('*'): return True
-        elif v in self.Parser.varNames[''] and self.Parser.varType['',v].endswith('*'): return True
-        else: return False
-
+        if v in self.Parser.varNames[f] and self.Parser.varType[f, v].endswith('*'):
+            return True
+        elif v in self.Parser.varNames[''] and self.Parser.varType['', v].endswith('*'):
+            return True
+        else:
+            return False
 
     # Checks whether variable  v  from function  f  is global.
     #
     def __isGlobal(self, f, v):
-        if (v in self.Parser.varNames[''] and v not in self.Parser.varNames[f]): return True
-        else: return False
+        if (v in self.Parser.varNames[''] and v not in self.Parser.varNames[f]):
+            return True
+        else:
+            return False
 
     def __getType(self, f, v):
         if (v in self.Parser.varNames[f]):
@@ -155,7 +159,6 @@ class constants(core.module.Translator):
         args = self.visit(n.args)
         return fref + '(' + args + ')'
 
-
     def visit_BinaryOp(self, n):
         lval_str = self._parenthesize_if(n.left, lambda d: not self._is_simple_node(d))
         rval_str = self._parenthesize_if(n.right, lambda d: not self._is_simple_node(d))
@@ -171,7 +174,11 @@ class constants(core.module.Translator):
 
         return '%s %s %s' % (lval_str, n.op, rval_str)
 
-
     def _isInteger(self, s):
-        if s[0] in ('-', '+'): return s[1:].isdigit()
-        else: return s.isdigit()
+        if s[0] in ('-', '+'):
+            return s[1:].isdigit()
+        else:
+            return s.isdigit()
+
+    def loadfromstring(self, string, env, fill_only_fields=None):
+        super(self.__class__, self).loadfromstring(string, env, fill_only_fields=['varNames', 'varType'])

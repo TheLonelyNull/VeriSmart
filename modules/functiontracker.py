@@ -3,8 +3,8 @@
 
     written by Omar Inverso, University of Southampton.
 """
-VERSION = 'functiontracker-2015.07.02' # merged with errorlabel-0.0-2015.06.25
-#VERSION = 'preinstrumenter-0.0-2015.06.25'
+VERSION = 'functiontracker-2015.07.02'  # merged with errorlabel-0.0-2015.06.25
+# VERSION = 'preinstrumenter-0.0-2015.06.25'
 """
     Optimization:
     Fix incorrect __VERIFIER_atomic_end call (which does not occur to the same control flow block
@@ -17,6 +17,7 @@ Changelog:
 import core.common, core.module
 import pycparser.c_ast
 
+
 class functiontracker(core.module.Translator):
     currentfunctionname = ''
     inputcoordstofunctions = {}
@@ -25,21 +26,19 @@ class functiontracker(core.module.Translator):
     def init(self):
         self.addOutputParam('coordstofunctions')
 
-    def loadfromstring(self, string, env):
-        super(self.__class__,self).loadfromstring(string, env)
+    def loadfromstring(self, string, env, fill_only_fields=None):
+        super(self.__class__, self).loadfromstring(string, env, fill_only_fields=[])
         self.setOutputParam('coordstofunctions', self.inputcoordstofunctions)
 
-    def visit(self,node):
-        if hasattr(node, 'coord') and self.currentInputLineNumber!=0 and self.currentfunctionname!='':
-            #print "function %s, coords: %s" % (self.currentfunctionname,self.currentInputLineNumber)
-            #print "function %s, origincoords: %s" % (self.currentfunctionname,self._mapbacklineno(self.currentInputLineNumber))
+    def visit(self, node):
+        if hasattr(node, 'coord') and self.currentInputLineNumber != 0 and self.currentfunctionname != '':
             self.inputcoordstofunctions[self._mapbacklineno(self.currentInputLineNumber)] = self.currentfunctionname
 
-        s = super(self.__class__,self).visit(node)
+        s = super(self.__class__, self).visit(node)
 
         return s
 
-    def visit_FuncDef(self,n):
+    def visit_FuncDef(self, n):
         self.currentfunctionname = n.decl.name
 
         s = super(self.__class__, self).visit_FuncDef(n)

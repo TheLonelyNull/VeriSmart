@@ -8,13 +8,13 @@
 """
 VERSION = 'parser-1.0-2017.08.23'
 # VERSION = 'parser-0.0-2015.06.26'
-#VERSION = 'parser-0.0-2015.01.07'
-#VERSION = 'parser-0.0-2014.10.29'   # CSeq-1.0beta
-#VERSION = 'parser-0.0-2014.10.29'   #newseq-0.6c, SVCOMP15
-#VERSION = 'parser-0.0-2014.10.27'   newseq-0.6a
-#VERSION = 'parser-0.0-2014.03.16'
-#VERSION = 'parser-0.0-2014.03.09'
-#VERSION = 'parser-0.0-2014.02.19'
+# VERSION = 'parser-0.0-2015.01.07'
+# VERSION = 'parser-0.0-2014.10.29'   # CSeq-1.0beta
+# VERSION = 'parser-0.0-2014.10.29'   #newseq-0.6c, SVCOMP15
+# VERSION = 'parser-0.0-2014.10.27'   newseq-0.6a
+# VERSION = 'parser-0.0-2014.03.16'
+# VERSION = 'parser-0.0-2014.03.09'
+# VERSION = 'parser-0.0-2014.02.19'
 """
 Generate symbol-table and a few other data structures.
 (this module is used at the beginning of a Translator module
@@ -51,68 +51,70 @@ Changelog:
 
 """
 
-#import pycparser19.c_parser, pycparser19.c_ast, pycparser19.c_generator
+# import pycparser19.c_parser, pycparser19.c_ast, pycparser19.c_generator
 import pycparser.c_parser, pycparser.c_ast, pycparser.c_generator
 from core import utils, common
+
+import pstats, cProfile
 
 
 class Parser(pycparser.c_generator.CGenerator):
     __sourcecode = ''
     __stack = []
-
+    __fields_to_fill = None
 
     """ Uses the same visitor pattern as c_ast.NodeVisitor, but modified to
         return a value from each visit method, using string accumulation in
         generic_visit.
     """
+
     def __init__(self):
         self.reset()
 
-
     def reset(self):
         ###### NEW PARSING TABLE START #####
-        self.symbols = []              # _all_ the symbols (function names, variables, struct names, .... ) TODO this needs to be checked & finished properly
+        self.symbols = []  # _all_ the symbols (function names, variables, struct names, .... ) TODO this needs to be checked & finished properly
         self.blocks = {}
         self.__symbolsstack = []
         self.__symbolscount = 0
-        #self.blocks.append('0')
+        # self.blocks.append('0')
         ##self.symbolsparents[n.name]# the symbol's full parents stack
         ##self.__symbolsblock[n.name] = # the symbol's full block/compound stack (e.g. 0:1:20:2 - block 0: is the global scope)
         ###### NEW PARSING TABLE END #####
 
-        self.currentFunct = ''         # name of the function being parsed ('' = none)
-        self.visitingField = False     # needed to differentiate between variables and fields during the visit
+        self.currentFunct = ''  # name of the function being parsed ('' = none)
+        self.visitingField = False  # needed to differentiate between variables and fields during the visit
 
-        self.funcName = ['']           # all functions names (consider '' to be a special function to model global scope)
+        self.funcName = ['']  # all functions names (consider '' to be a special function to model global scope)
         self.funcParams = {}
-        self.threadName = []           # all threads names (i.e. functions used as argument to pthread_create())
-        self.funcReferenced = []       # all functions whose id are used in anything else than just function calls (e.g. they are used as pointer-to-functions..)
-        self.funcCallCnt = {}          # number of function calls for each function name
-        self.threadCallCnt = {}        # number of times a function is used to generate a thread (by calling pthread_create())
+        self.threadName = []  # all threads names (i.e. functions used as argument to pthread_create())
+        self.funcReferenced = []  # all functions whose id are used in anything else than just function calls (e.g. they are used as pointer-to-functions..)
+        self.funcCallCnt = {}  # number of function calls for each function name
+        self.threadCallCnt = {}  # number of times a function is used to generate a thread (by calling pthread_create())
 
-        self.threadCount = 0           # pthread create()s found so far
-        self.threadIndex = {}          # index of the thread = value of threadcount when the pthread_create to that thread was discovered
+        self.threadCount = 0  # pthread create()s found so far
+        self.threadIndex = {}  # index of the thread = value of threadcount when the pthread_create to that thread was discovered
 
-        self.lastStmt = ''             # last statement generated
-        self.lastFuncStmt = {}         # last statement for each function
+        self.lastStmt = ''  # last statement generated
+        self.lastFuncStmt = {}  # last statement for each function
 
-        self.funcBlock = {}            # the entire function definition (= declaration+body) for each function
-        self.funcBlockIn = {}          # input parameters for each function
-        self.funcBlockOut = {}         # return value for each function
-        self.funcBody = {}             # function body-only
-        self.funcDecl = {}             # function declarations, only for functions declared and defined in different statements, or not defined at all.
-        self.funcASTNode = {}          # the AST node for the function definitions, by function
+        self.funcBlock = {}  # the entire function definition (= declaration+body) for each function
+        self.funcBlockIn = {}  # input parameters for each function
+        self.funcBlockOut = {}  # return value for each function
+        self.funcBody = {}  # function body-only
+        self.funcDecl = {}  # function declarations, only for functions declared and defined in different statements, or not defined at all.
+        self.funcASTNode = {}  # the AST node for the function definitions, by function
         self.funcIsVoid = {}
-        self.funcLabels = {}           # set of labels defined in a given function, by function
+        self.funcLabels = {}  # set of labels defined in a given function, by function
 
-        self.currentVarAssign = ''     # name of the current variable used as lvalue in an assignment statement
+        self.currentVarAssign = ''  # name of the current variable used as lvalue in an assignment statement
 
-        self.currentStruct = ''        # note! this
+        self.currentStruct = ''  # note! this
         self.structName = []
 
-        self.mainParametersDecl = ''     # parameters of the main() function to be transferred to thread 0.
-        
-        self.skipParenthesis = False     # set to true when extracting thread name from pthread call 
+        self.mainParametersDecl = ''  # parameters of the main() function to be transferred to thread 0.
+
+        self.skipParenthesis = False  # set to true when extracting thread name from pthread call
 
         """ The following are indexed either using
             (struct, variable)  for struct fields, or
@@ -125,19 +127,19 @@ class Parser(pycparser.c_generator.CGenerator):
                   the stack of blocks enclosing a variable's scope
                   should rather be used for indexing (each block should have a unique ID)
         """
-        self.varNames = {}           # names of all the variables (global, local, parameters) + variables in structs
-        self.varNames[''] = []       # initialisation for global var names ('' is the global scope)
+        self.varNames = {}  # names of all the variables (global, local, parameters) + variables in structs
+        self.varNames[''] = []  # initialisation for global var names ('' is the global scope)
 
-        self.varType = {}            # int, char, ....
+        self.varType = {}  # int, char, ....
         self.varTypeUnExpanded = {}  # same as .varType, but with unexpanded typedefs
-        self.varArity = {}           # 0 for scalar, k for k-dimensional arrays
-        self.varSize = {}            # [] for scalars, [n1,...,k] for k-dimensional arrays
-        self.varKind = {}            # g, l, p, s
-        self.varMallocd = {}         # used only for pointers
-        self.varID = {}              # unique IDs for variables, as they are found while parsing, starting with 0
-        self.varCount = 0            #
-        self.extraGlovalVarCount = 0 # Count global variables introduced in the above data structures, but not from original input.
-        self.varInitExpr = {}        # set when a declared variable has an init expression
+        self.varArity = {}  # 0 for scalar, k for k-dimensional arrays
+        self.varSize = {}  # [] for scalars, [n1,...,k] for k-dimensional arrays
+        self.varKind = {}  # g, l, p, s
+        self.varMallocd = {}  # used only for pointers
+        self.varID = {}  # unique IDs for variables, as they are found while parsing, starting with 0
+        self.varCount = 0  #
+        self.extraGlovalVarCount = 0  # Count global variables introduced in the above data structures, but not from original input.
+        self.varInitExpr = {}  # set when a declared variable has an init expression
         self.varPtrToFunct = {}
 
         # patch for handling pointer-to-function etc. (they must go with the new symbol table)
@@ -146,9 +148,9 @@ class Parser(pycparser.c_generator.CGenerator):
         self.__varIsFunction = {}
 
         # list of line no. where an occurrence, referencing, or dereferencing  happened
-        self.varOccurrence = {}      # any occurrence (does not include the very first time a variable occurs, i.e. on the left hand side of its own declaration)
-        self.varReferenced = {}      # &var
-        self.varDeReferenced = {}    # *var
+        self.varOccurrence = {}  # any occurrence (does not include the very first time a variable occurs, i.e. on the left hand side of its own declaration)
+        self.varReferenced = {}  # &var
+        self.varDeReferenced = {}  # *var
 
         # Handling of typedefs.
         # We put in the first variable below the last part of a typedef statement,
@@ -156,14 +158,14 @@ class Parser(pycparser.c_generator.CGenerator):
         #
         # Anonymous typedefs are no exception, as they are assigned an internal name to be used as described.
         #
-        self.typedefs = []          # contains last the part of a typedef stmt, e.g. typedef struct struct_name {.... } last_part;
+        self.typedefs = []  # contains last the part of a typedef stmt, e.g. typedef struct struct_name {.... } last_part;
         self.typedefExpansion = {}  # e.g. typedefs['field'] = struct { int a; int b; ... }  from the original typedef statement
 
         # Statements start with indentation of self.indent_level spaces, using
         # the _make_indent method
         #
-        self.indent_level = 0       # to keep track of the depth of the block {}
-        self.INDENT_SPACING = '    ' # ....
+        self.indent_level = 0  # to keep track of the depth of the block {}
+        self.INDENT_SPACING = '    '  # ....
 
         # = True while parsing the subtree for a function declaration
         self.parsingFuncDecl = False
@@ -192,13 +194,12 @@ class Parser(pycparser.c_generator.CGenerator):
 
         self.lines = []
 
-        self.callReferences = {}   # Key is name of callee, and value is caller
+        self.callReferences = {}  # Key is name of callee, and value is caller
         self.varInAssignment = {}
         self.varNoNeedInit = {}
 
     def getversion(self):
-        return PARSER_VERSION
-
+        return VERSION
 
     '''
     def load(self, filename):
@@ -209,37 +210,28 @@ class Parser(pycparser.c_generator.CGenerator):
         self.ast.show()
     '''
 
-
-    def loadfromstring(self, string):
-        #self.ast = pycparser.parse_file(self.__inputfilename, use_cpp=True, cpp_args=r'-Iinclude -E -C ')
-        #self.ast = pycparser19.c_parser.CParser().parse(string)
+    def loadfromstring(self, string, fill_only_fields=None):
+        profiler = cProfile.Profile()
+        profiler.enable(subcalls=True)
         self.ast = pycparser.c_parser.CParser().parse(string)
- #       print("INSIDE: " + str(datetime.datetime.now().time())) #S:
-        self.__sourcecode = self.visit(self.ast)
-        ###self.ast.show()
-
-        '''
-        from pycparserext.ext_c_parser import GnuCParser
-        p = GnuCParser()
-        self.ast = p.parse(string)
-        #self.ast.show()
-        '''
-
+        if fill_only_fields is None or len(fill_only_fields) > 0:
+            self.__fields_to_fill = fill_only_fields
+            self.__sourcecode = self.visit(self.ast)
+        profiler.disable()
+        stats = pstats.Stats(profiler).sort_stats('cumtime')
+        stats.print_stats()
 
     def show(self):
-        #print utils.strip(self.__sourcecode)
+        # print utils.strip(self.__sourcecode)
         print(self.__sourcecode)
 
-
     def save(self, filename):
-        outfile = open(filename,"w")
+        outfile = open(filename, "w")
         outfile.write(self.__sourcecode)
         outfile.close()
 
-
     def string(self):
-        return(self.visit(self.ast))
-
+        return (self.visit(self.ast))
 
     def printsymbols(self):
         ret = ''
@@ -377,23 +369,21 @@ class Parser(pycparser.c_generator.CGenerator):
 
         return ret
 
-
     def _make_indent(self, delta=0):
-        return ' ' # (self.indent_level+delta) * self.INDENT_SPACING
-
+        return ' '  # (self.indent_level+delta) * self.INDENT_SPACING
 
     def _getCurrentCoords(self, item):
         return ''
 
     def visit(self, node):
         method = 'visit_' + node.__class__.__name__
-                
+
         # Extracts node coords where possible.
         if hasattr(node, 'coord') and node.coord is not None:
-            #print (str(node.coord))    #S DEB 
+            # print (str(node.coord))    #S DEB
             self.nodecoords[node] = utils.removeColumnFromCoord(node.coord)
             # self.nodecoords[node] = str(node.coord)    # not valid from pycparser 2.18+
-            #print "-> attr %s [%s]\n" % (self.nodecoords[node], str(node))  #S: DEB
+            # print "-> attr %s [%s]\n" % (self.nodecoords[node], str(node))  #S: DEB
         else:
             self.nodecoords[node] = None
 
@@ -431,28 +421,27 @@ class Parser(pycparser.c_generator.CGenerator):
 
         self.__stack.append(node.__class__.__name__)
         retval = lineCoords + getattr(self, method, self.generic_visit)(node)
-        #print ("lineCoords="+lineCoords)
-        #print ("HERE -> " + retval) #S: DEB
+        # print ("lineCoords="+lineCoords)
+        # print ("HERE -> " + retval) #S: DEB
 
         ##print str(self.__stack) + '   prev:' + str(self.__stack[len(self.__stack)-2])
         self.__stack.pop()
 
         return retval
 
-
     def generic_visit(self, node):
-        #~ print('generic:', type(node))
+        # ~ print('generic:', type(node))
         if node is None:
             return ''
         else:
-            return ''.join(self.visit(c) for c_name,c in node.children())
-
+            # TODO confirm this join is unnecessary and not used anywhere
+            return ''
+            # return ''.join(self.visit(c) for c_name, c in node.children())
 
     def visit_Label(self, n):
         self.funcLabels[self.currentFunct].append(n.name)
 
         return n.name + ':\n' + self._generate_stmt(n.stmt)
-
 
     def visit_FuncCall(self, n):
         fref = self._parenthesize_unless_simple(n.name)
@@ -469,13 +458,13 @@ class Parser(pycparser.c_generator.CGenerator):
         # pthread_create(&id, NULL, f, &arg);
         #                          ^^^
         #
-        if fref == 'pthread_create' or fref == common.changeID['pthread_create']:   # may be used after thread_* renaming
-            self.skipParenthesis = True  #S: added to handle calls to pthread_create with casting of the args
+        if fref == 'pthread_create' or fref == common.changeID['pthread_create']:  # may be used after thread_* renaming
+            self.skipParenthesis = True  # S: added to handle calls to pthread_create with casting of the args
             fName = self.visit(n.args.exprs[2])
-            self.skipParenthesis = False  #S: added to handle calls to pthread_create with casting of the args
+            self.skipParenthesis = False  # S: added to handle calls to pthread_create with casting of the args
             fName = fName[1:] if fName.startswith('&') else fName
-            fnamelist = fName.split()   #S: added to handle calls to pthread_create with casting of the args
-            fName = fnamelist[-1]       #S: take only the arg, and drop all the rest
+            fnamelist = fName.split()  # S: added to handle calls to pthread_create with casting of the args
+            fName = fnamelist[-1]  # S: take only the arg, and drop all the rest
 
             if fName not in self.threadCallCnt:
                 self.threadName.append(fName)
@@ -486,15 +475,17 @@ class Parser(pycparser.c_generator.CGenerator):
                 self.threadCallCnt[fName] += 1;
 
         # Counts function calls
-        if fref not in self.funcCallCnt: self.funcCallCnt[fref] = 0;
-        else: self.funcCallCnt[fref] += 1;
+        if fref not in self.funcCallCnt:
+            self.funcCallCnt[fref] = 0;
+        else:
+            self.funcCallCnt[fref] += 1;
 
         return fref + '(' + args + ')'
 
-
     def visit_Typedef(self, n):
         s = ''
-        if n.storage: s += ' '.join(n.storage) + ' '
+        # This is not neccesary
+        # if n.storage: s += ' '.join(n.storage) + ' '
 
         self.parsingTypedef = True
         typestring = self._generate_type(n.type)
@@ -502,22 +493,17 @@ class Parser(pycparser.c_generator.CGenerator):
 
         # Typical  typedef struct  statement...
         # TODO this should be reimplemented using AST visits.
-        if  typestring.startswith("struct "):
-            ## print "     adding typedef name '" +s+ "'"
-            ## print "     adding typedef type '" +typestring+ "'"
+        if typestring.startswith("struct "):
             leftPart = typestring[:typestring.find('{')]
             if leftPart.endswith(' '): leftPart = leftPart[:-1]
             if leftPart.endswith('\n'): leftPart = leftPart[:-1]
             if leftPart.endswith(' '): leftPart = leftPart[:-1]
-            rightPart = typestring[typestring.rfind('} ')+2:]
-            ## print "      LEFT: '" + leftPart + "'"
-            ## print "      RIGHT: '" + rightPart + "'"
+            rightPart = typestring[typestring.rfind('} ') + 2:]
             self.typedefs.append(rightPart)
             self.typedefExpansion[rightPart] = leftPart
 
         s += typestring
         return s
-
 
     # Note: function definition = function declaration + body.
     # This method is not called when parsing simple declarations of function (i.e., function prototypes).
@@ -540,9 +526,18 @@ class Parser(pycparser.c_generator.CGenerator):
 
         # Note: the function definition is in two parts:
         #       one is 'decl' and the other is 'body'
-        decl = self.visit(n.decl)
 
-        if decl.startswith("void") and not decl.startswith("void *"):
+        only_call_when_fields = ['varID', 'varArity', 'varNames', 'varType', 'varKind', 'varTypeUnExpanded',
+                                 'varOccurrence', 'varSize', 'varDereferenced', 'funcBlock', 'funcBody', 'funcBlockOut',
+                                 'funcBlockIn']
+        decl = ''
+        if self.__fields_to_fill is None or any(item in only_call_when_fields for item in self.__fields_to_fill):
+            decl = self.visit(n.decl)
+
+        # check if this is a ptr and if it is void
+        type_decl = n.decl.type.type
+        if not isinstance(type_decl, pycparser.c_ast.PtrDecl) and isinstance(type_decl.type,
+                                                                             pycparser.c_ast.IdentifierType) and 'void' in type_decl.type.names:
             self.parsingVoidFunction = True
             self.funcIsVoid[self.currentFunct] = True
         else:
@@ -557,25 +552,23 @@ class Parser(pycparser.c_generator.CGenerator):
         self.funcBody[self.currentFunct] = body
 
         # Store the return type of the function
-        returnType = decl[:decl.find(self.currentFunct+'(')]
+        returnType = decl[:decl.find(self.currentFunct + '(')]
         returnType = returnType[:-1] if returnType.endswith(' ') else returnType
         self.funcBlockOut[self.currentFunct] = returnType
 
         # Store the function input parameter list
-        self.funcBlockIn[self.currentFunct] = decl[decl.find(self.currentFunct+'(')+len(self.currentFunct)+1:decl.rfind(')')]
+        self.funcBlockIn[self.currentFunct] = decl[decl.find(self.currentFunct + '(') + len(
+            self.currentFunct) + 1:decl.rfind(')')]
 
         self.lastFuncStmt[self.currentFunct] = self.lastStmt
-        #print "VISITING  %s  LAST STMT %s\n\n" % (self.currentFunct, self.lastStmt)
+        # print "VISITING  %s  LAST STMT %s\n\n" % (self.currentFunct, self.lastStmt)
         self.currentFunct = ''
 
         return funcBlock
 
-
     def visit_Compound(self, n):
         s = self._make_indent() + '{\n'
         self.indent_level += 1
-        ##if n.block_items:
-        ##  s += ''.join(self._generate_stmt(stmt) for stmt in n.block_items)
 
         if n.block_items:
             for stmt in n.block_items:
@@ -590,36 +583,33 @@ class Parser(pycparser.c_generator.CGenerator):
 
         return s
 
-
     def visit_ID(self, n):
         ####print "VISITING ID:%s   STACK:<%s>   COORDS:%s   FIELD?:%s" % (n.name, str(self.__stack), self.nodecoords[n], self.visitingField )
 
         if not self.visitingField:
             if self.nodecoords[n]:
                 if n.name in self.varNames[self.currentFunct]:
-                    self.varOccurrence[self.currentFunct,n.name].append(int(self.nodecoords[n][1:]))
+                    self.varOccurrence[self.currentFunct, n.name].append(int(self.nodecoords[n][1:]))
                 elif n.name in self.varNames['']:
-                    self.varOccurrence['',n.name].append(int(self.nodecoords[n][1:]))
+                    self.varOccurrence['', n.name].append(int(self.nodecoords[n][1:]))
 
         # Detecting pointer-to-function references (i.e.: when a function name is used for anything else than a function call)
         #
         if n.name in self.funcName:
 
-            prev = str(self.__stack[len(self.__stack)-2])
-            #print "visiting function : %s (prev:%s)" % (n.name, prev)
-            #print str(self.__stack) + '   prev:' + str(self.__stack[len(self.__stack)-2])
+            prev = str(self.__stack[len(self.__stack) - 2])
+            # print "visiting function : %s (prev:%s)" % (n.name, prev)
+            # print str(self.__stack) + '   prev:' + str(self.__stack[len(self.__stack)-2])
 
             ##if prev != 'FuncCall':
             if 'FuncCall' not in self.__stack:
                 self.funcReferenced.append(n.name)
                 # TODO: inline function from pointer (n.name)
 
-
         if (self.currentFunct != '' and n.name in self.varInAssignment[self.currentFunct]):
             self.varInAssignment[self.currentFunct][n.name] += 1
 
         return n.name
-
 
     def visit_Case(self, n):
         s = 'case ' + self.visit(n.expr) + ':\n'
@@ -629,7 +619,6 @@ class Parser(pycparser.c_generator.CGenerator):
         self.indent_level -= 2
         return s
 
-
     def visit_Default(self, n):
         s = 'default:\n'
         self.indent_level += 2
@@ -638,13 +627,12 @@ class Parser(pycparser.c_generator.CGenerator):
         self.indent_level -= 2
         return s
 
-
     def visit_Decl(self, n, no_type=False):
-        #if n.name not in self.symbols and n.name is not None:
+        # if n.name not in self.symbols and n.name is not None:
         if n.name is not None:
             # new symbol table (TODO)
             self.__symbolsstack.append(n.name)
-            self.symbols.append( (self.__symbolscount,n.name) )
+            self.symbols.append((self.__symbolscount, n.name))
             self.__symbolscount += 1
             ##self.symbolsparents[n.name] = self....  # the symbol's full parents stack
             ##self.symbolsblock[n.name] = self.....   # the symbol's full block/compound stack (e.g. 0:1:20:2 - block 0: is the global scope)
@@ -663,10 +651,12 @@ class Parser(pycparser.c_generator.CGenerator):
         # explicitly only for the first delaration in a list.
 
         #
+        # The string returned by generate decl is not used outside of the function itself
+        # it is conditionally computed and should not be relied upon to always to always be computed
         s = n.name if no_type else self._generate_decl(n)
 
-        if self.currentFunct != '':   # Inside a function
-            self.varInAssignment[self.currentFunct][n.name] = 0   # Just a declaration
+        if self.currentFunct != '':  # Inside a function
+            self.varInAssignment[self.currentFunct][n.name] = 0  # Just a declaration
 
         if n.bitsize: s += ' : ' + self.visit(n.bitsize)
 
@@ -679,14 +669,13 @@ class Parser(pycparser.c_generator.CGenerator):
                 s += ' = ' + self.visit(n.init)
 
         if 'FuncDecl' in str(n.type) and self.currentFunct == '':
-            #print "function %s   decl %s   currentFunct %s\n\n" % (n.name, s, self.currentFunct)
+            # print "function %s   decl %s   currentFunct %s\n\n" % (n.name, s, self.currentFunct)
             self.funcDecl[n.name] = s
 
         if n.name is not None and len(self.__symbolsstack) > 0:
             self.__symbolsstack.pop()
 
         return s
-
 
     def visit_Struct(self, n):
         '''
@@ -719,7 +708,6 @@ class Parser(pycparser.c_generator.CGenerator):
 
         return s
 
-
     def visit_StructRef(self, n):
         sref = self._parenthesize_unless_simple(n.name)
 
@@ -732,34 +720,36 @@ class Parser(pycparser.c_generator.CGenerator):
 
         return sref + n.type + field
 
-
     def visit_UnaryOp(self, n):
         operand = self._parenthesize_unless_simple(n.expr)
-        oper = operand[:operand.find('[')] if '[' in operand else operand # could be an array: remove indexes
+        oper = operand[:operand.find('[')] if '[' in operand else operand  # could be an array: remove indexes
 
-        if n.op == 'p++': return '%s++' % operand
-        elif n.op == 'p--': return '%s--' % operand
-        elif n.op == 'sizeof': return 'sizeof(%s)' % self.visit(n.expr)
+        if n.op == 'p++':
+            return '%s++' % operand
+        elif n.op == 'p--':
+            return '%s--' % operand
+        elif n.op == 'sizeof':
+            return 'sizeof(%s)' % self.visit(n.expr)
         elif n.op == '*':
-            #print "DEREFERENCING %s (line:%s)" % (operand, self.nodecoords[n]);
+            # print "DEREFERENCING %s (line:%s)" % (operand, self.nodecoords[n]);
             if self.nodecoords[n]:
                 if oper in self.varNames[self.currentFunct]:
-                    self.varDeReferenced[self.currentFunct,oper].append(int(self.nodecoords[n][1:]))
+                    self.varDeReferenced[self.currentFunct, oper].append(int(self.nodecoords[n][1:]))
                 elif oper in self.varNames['']:
-                    self.varDeReferenced['',oper].append(int(self.nodecoords[n][1:]))
+                    self.varDeReferenced['', oper].append(int(self.nodecoords[n][1:]))
 
             return '%s%s' % (n.op, operand)
         elif n.op == '&':
-            #print "REFERENCING %s / %s (line:%s)" % (operand, oper, self.nodecoords[n]);
+            # print "REFERENCING %s / %s (line:%s)" % (operand, oper, self.nodecoords[n]);
             if self.nodecoords[n]:
                 if oper in self.varNames[self.currentFunct]:  # local variable
-                    self.varReferenced[self.currentFunct,oper].append(int(self.nodecoords[n][1:]))
-                elif oper in self.varNames['']:               # global variable
-                    self.varReferenced['',oper].append(int(self.nodecoords[n][1:]))
+                    self.varReferenced[self.currentFunct, oper].append(int(self.nodecoords[n][1:]))
+                elif oper in self.varNames['']:  # global variable
+                    self.varReferenced['', oper].append(int(self.nodecoords[n][1:]))
 
             return '%s%s' % (n.op, operand)
-        else: return '%s%s' % (n.op, operand)
-
+        else:
+            return '%s%s' % (n.op, operand)
 
     def visit_Union(self, n):
         oldParsingStruct = self.parsingStruct
@@ -778,51 +768,49 @@ class Parser(pycparser.c_generator.CGenerator):
                 self.varNoNeedInit[self.currentFunct][lval_str] = True
         return '%s %s %s' % (lval_str, n.op, rval_str)
 
-
     def _generate_decl(self, n):
-        #print "DECL %s, %s, %s parsingstruct:%s" % (n.name, self.currentFunct, self.currentStruct, self.parsingStruct)
-        #print str(n.type)
-
         """ Generation from a Decl node.
         """
         s = ''
-        #if n.name == '__cs_nondetmain_c':   #DEB
-        #    #print n.type
-        #    print self.currentFunct
-        #    n.show() 
 
         # use flags to keep track through recursive calls of what is being parsed (START)
-        if str(n.type).strip().startswith('FuncDecl'):  #S old condition 'FuncDecl' in str(n.type):
+        if isinstance(n.type, pycparser.c_ast.FuncDecl):  # S old condition 'FuncDecl' in str(n.type):
             oldParsingFuncDecl = self.parsingFuncDecl
             self.parsingFuncDecl = True
-            ###self.varNames[self.currentFunct] = []
 
-        if str(n.type).strip().startswith('Struct'):  #S old condition 'Struct' in str(n.type): 
+        if isinstance(n.type, pycparser.c_ast.Struct):  # S old condition 'Struct' in str(n.type):
             self.parsingStruct = True
 
-        if n.funcspec: s = ' '.join(n.funcspec) + ' '
-        if n.storage: s += ' '.join(n.storage) + ' '
+        fields_for_str_gen = ['varArity', 'varType', 'varKind', 'varTypeUnExpanded',
+                              'mainParamsDecl', 'varSize', 'funcBlock', 'funcBody', 'funcBlockOut',
+                              'funcBlockIn']
+        str_gen = False
+        if self.__fields_to_fill is None or any(item in fields_for_str_gen for item in self.__fields_to_fill):
+            str_gen = True
+        # TODO check if called from generate_type
+        if str_gen:
+            if n.funcspec: s = ' '.join(n.funcspec) + ' '
+            if n.storage: s += ' '.join(n.storage) + ' '
 
-        s += self._generate_type(n.type)
+            s += self._generate_type(n.type)
 
         # use flags to keep track through recursive calls of what is being parsed (END)
-        if str(n.type).strip().startswith('FuncDecl'):  #S old condition 'FuncDecl' in str(n.type):
-            ### self.parsingFuncDecl = False
+        if isinstance(n.type, pycparser.c_ast.FuncDecl):
             self.parsingFuncDecl = oldParsingFuncDecl
 
-        if str(n.type).strip().startswith('Struct'):  #S old condition 'Struct' in str(n.type):
+        if isinstance(n.type, pycparser.c_ast.Struct):
             self.parsingStruct = False
-
 
         """ Handling of struct declarations.
         """
-        #S old   if 'Struct' in str(n.type) or 'Union' in str(n.type):
-        if str(n.type).strip().startswith('Struct') or str(n.type).strip().startswith('Union'):
+        # S old   if 'Struct' in str(n.type) or 'Union' in str(n.type):
+        if isinstance(n.type, pycparser.c_ast.Struct) or isinstance(n.type, pycparser.c_ast.Union):
             # new structure declaration
             1
             if self.parsingStruct:
                 # new field in a structure
                 1
+                # TODO this seems unfinished
 
         """ Handling of variable declarations.
 
@@ -856,7 +844,10 @@ class Parser(pycparser.c_generator.CGenerator):
         # Whatever is not a function or a struct here, is a variable declaration
         # TODO: see what else should be excluded to only have var declarations after the if
         #
-        if not str(n.type).strip().startswith('FuncDecl') and not str(n.type).strip().startswith('Struct') and not str(n.type).strip().startswith('Union'):   #S old condition 'FuncDecl' not in str(n.type) 'Struct' not in str(n.type) and 'Union' not in str(n.type):
+        if not isinstance(n.type, pycparser.c_ast.FuncDecl) and not isinstance(n.type,
+                                                                               pycparser.c_ast.Struct) and not isinstance(
+            n.type,
+            pycparser.c_ast.Union):  # S old condition 'FuncDecl' not in str(n.type) 'Struct' not in str(n.type) and 'Union' not in str(n.type):
             # Variable name (for variables) or field name (for structs fields).
             #
             # At this point,
@@ -876,126 +867,131 @@ class Parser(pycparser.c_generator.CGenerator):
             # (2) to index the arrays type, kind, arity, size,
             # in this case with the tuple (context, variable)
             #
-            if not self.parsingStruct: variableContext = self.currentFunct
-            else: variableContext = self.currentStruct
+            if not self.parsingStruct:
+                variableContext = self.currentFunct
+            else:
+                variableContext = self.currentStruct
 
-            #self.varPtrToFunct[variableContext,n.name] = None
+            # self.varPtrToFunct[variableContext,n.name] = None
             ##print "appending var  [%s]\n          from context [%s]\n          type [%s]\n          string [%s]\n\n\n" % (n.name, variableContext, n.type, s)
 
-            if (not n.name in self.varNames[variableContext] and    # avoid duplicates
-                self.__stack.count('ParamList') <= 1):              # do not consider nested declarations (example: int f1(int (f2(int a, int b)))
+            if (not n.name in self.varNames[variableContext] and  # avoid duplicates
+                    self.__stack.count(
+                        'ParamList') <= 1):  # do not consider nested declarations (example: int f1(int (f2(int a, int b)))
                 ### print "***** appending var  [%s]\n          from context [%s]\n          type [%s]\n          string [%s]" % (n.name, variableContext, n.type, s)
                 ### print "***** " + str(self.__stack) + '   prev:' + str(self.__stack[len(self.__stack)-2])
                 ### print "***** PARAMLIST COUNT " + str(self.__stack.count('ParamList')) + '\n\n'
 
                 # new variable or field discovered
-                self.varNames[variableContext].append(n.name)       #
-                self.varID[variableContext,n.name] = self.varCount  # associate each new variable with a unique IDs
-                self.varReferenced[variableContext,n.name] = []
-                self.varDeReferenced[variableContext,n.name] = []
-                self.varOccurrence[variableContext,n.name] = []
+                self.varNames[variableContext].append(n.name)  #
+                self.varID[variableContext, n.name] = self.varCount  # associate each new variable with a unique IDs
+                self.varReferenced[variableContext, n.name] = []
+                self.varDeReferenced[variableContext, n.name] = []
+                self.varOccurrence[variableContext, n.name] = []
 
-                if n.init: self.varInitExpr[variableContext,n.name] = True
-                else: self.varInitExpr[variableContext,n.name] = False
+                if n.init:
+                    self.varInitExpr[variableContext, n.name] = True
+                else:
+                    self.varInitExpr[variableContext, n.name] = False
 
                 self.varCount += 1
 
-            # Variable or field type
-            if s.count('[') > 0: s2 = s[ :s.find('[')]
-            else: s2 = s
-
-            if n.name:
-                if s2.endswith(n.name): s2 = s2[:-len(n.name)]
-                else: s2 = s2.replace(n.name, '')
-            if s2.endswith(' '): s2 = s2[:-1]
-
-            # Typedef expansion:
-            # when some type of variable is found for which there is an entry in the list of typedefs,
-            # expands directly in the symbol table the corresponding string.
-            #
-            self.varTypeUnExpanded[variableContext,n.name] = s2
-
-            for x in self.typedefs:
-                ## print "found %s ---> %s" % (x, self.typedefExpansion[x])
-
-                # In Lazy-cseq the following if-else block was:
-                #if s2 == x: s2 = self.typedefExpansion[x]                                                                                                 
-                #if s2.startswith(x+ ' '): s2 = s2.replace(x+' ', self.typedefExpansion[x]+' ', 1)
-                #s2 = s2.replace(' '+x+' ', ' '+self.typedefExpansion[x]+' ')
-
-                if s2 == x:
-                    s2 = self.typedefExpansion[x]
-                elif s2.startswith(x+ ' '):
-                    s2 = s2.replace(x+' ', self.typedefExpansion[x]+' ', 1)
+            if str_gen:
+                # Variable or field type
+                if s.count('[') > 0:
+                    s2 = s[:s.find('[')]
                 else:
-                    s2 = s2.replace(' '+x+' ', ' '+self.typedefExpansion[x]+' ')
+                    s2 = s
 
-                #print (x)
-                #print(self.typedefExpansion[x])
-                #print (s2)
-            s2 = s2.replace('\n', '')
-            s2 = s2.replace('\t', ' ')
-            self.varType[variableContext,n.name] = s2.rstrip()
-            ### self.varType[variableContext,n.name] = n.type
-            ###print "variable added %s %s" % (n.name, n.type)
-            ###print str(self.__stack) + '   prev:' + str(self.__stack[len(self.__stack)-2]) + '\n\n'
+                if n.name:
+                    if s2.endswith(n.name):
+                        s2 = s2[:-len(n.name)]
+                    else:
+                        s2 = s2.replace(n.name, '')
+                if s2.endswith(' '): s2 = s2[:-1]
 
-            # Variable kind
-            if self.parsingFuncDecl:    # parameter (from a function declaration)
-                self.varKind[variableContext, n.name] = 'p'
-                
-                if variableContext != '': self.funcParams[variableContext].append(n.name)
+                # Typedef expansion:
+                # when some type of variable is found for which there is an entry in the list of typedefs,
+                # expands directly in the symbol table the corresponding string.
+                #
+                self.varTypeUnExpanded[variableContext, n.name] = s2
 
-                ## print "FOUND MAIN PARAMETER %s, DECL %s\n\n" % (n.name, s)
-                if variableContext == 'main':
-                    varDecl = s;
-                    varDecl = varDecl.replace(' '+n.name, ' __CS_main_arg_'+n.name)
-                    varDecl = varDecl.replace(' *'+n.name, ' *__CS_main_arg_'+n.name)
-                    varDecl = varDecl.replace(' *__CS_main_arg_'+n.name+'[]', ' **__CS_main_arg_'+n.name)
+                for x in self.typedefs:
+                    ## print "found %s ---> %s" % (x, self.typedefExpansion[x])
 
-                    self.mainParametersDecl += '\t' + varDecl + ';\n'   ### TODO
+                    # In Lazy-cseq the following if-else block was:
+                    # if s2 == x: s2 = self.typedefExpansion[x]
+                    # if s2.startswith(x+ ' '): s2 = s2.replace(x+' ', self.typedefExpansion[x]+' ', 1)
+                    # s2 = s2.replace(' '+x+' ', ' '+self.typedefExpansion[x]+' ')
 
-            elif self.parsingStruct:    # field in a struct (this are not really variables, but we handle them using the same data structures)
-                self.varKind[variableContext, n.name] = 'f'
-            elif self.indent_level < 1:  # global variable
-                self.varKind[variableContext, n.name] = 'g'
-            else:                       # local variable
-                self.varKind[variableContext, n.name] = 'l'
+                    if s2 == x:
+                        s2 = self.typedefExpansion[x]
+                    elif s2.startswith(x + ' '):
+                        s2 = s2.replace(x + ' ', self.typedefExpansion[x] + ' ', 1)
+                    else:
+                        s2 = s2.replace(' ' + x + ' ', ' ' + self.typedefExpansion[x] + ' ')
 
-            # Variable arity (scalars have arity 0)
-            self.varArity[variableContext,n.name] = int(s.count('['))   # TODO this needs to be properly calculated
+                s2 = s2.replace('\n', '')
+                s2 = s2.replace('\t', ' ')
+                self.varType[variableContext, n.name] = s2.rstrip()
 
-            # Variable size(s) (for scalars that is an empty array)
-            self.varSize[variableContext,n.name] = []
+                # Variable kind
+                if self.parsingFuncDecl:  # parameter (from a function declaration)
+                    self.varKind[variableContext, n.name] = 'p'
 
-            tmp_s = s
-            i = self.varArity[variableContext,n.name]
+                    if variableContext != '': self.funcParams[variableContext].append(n.name)
 
-            while i > 0:
-                tmp = tmp_s[tmp_s.find("[")+1:tmp_s.find("]")]
-                if tmp == '': ithSize = -1              # Unbounded array. This is equivalent to declare a pointer. TODO
-                ###elif not tmp.isdigit(): ithSize = -2    # Array size given by a complex expression. This is like dynamically allocated blocks. TODO
-                elif not tmp.isdigit(): ithSize = tmp   # Array size given by a complex expression. This is like dynamically allocated blocks. TODO
-                else: ithSize = int(tmp)                # Array size given by a constant expression
+                    if variableContext == 'main':
+                        varDecl = s
+                        varDecl = varDecl.replace(' ' + n.name, ' __CS_main_arg_' + n.name)
+                        varDecl = varDecl.replace(' *' + n.name, ' *__CS_main_arg_' + n.name)
+                        varDecl = varDecl.replace(' *__CS_main_arg_' + n.name + '[]', ' **__CS_main_arg_' + n.name)
 
-                self.varSize[variableContext,n.name].append(ithSize)
-                tmp_s = tmp_s[tmp_s.find("]")+1:]
-                i = i-1
+                        self.mainParametersDecl += '\t' + varDecl + ';\n'  ### TODO
+
+                elif self.parsingStruct:  # field in a struct (this are not really variables, but we handle them using the same data structures)
+                    self.varKind[variableContext, n.name] = 'f'
+                elif self.indent_level < 1:  # global variable
+                    self.varKind[variableContext, n.name] = 'g'
+                else:  # local variable
+                    self.varKind[variableContext, n.name] = 'l'
+
+                # Variable arity (scalars have arity 0)
+                # THIS IS NEVER USED
+                self.varArity[variableContext, n.name] = int(s.count('['))  # TODO this needs to be properly calculated
+
+                # Variable size(s) (for scalars that is an empty array)
+                self.varSize[variableContext, n.name] = []
+
+                tmp_s = s
+                i = self.varArity[variableContext, n.name]
+
+                while i > 0:
+                    tmp = tmp_s[tmp_s.find("[") + 1:tmp_s.find("]")]
+                    if tmp == '':
+                        ithSize = -1  # Unbounded array. This is equivalent to declare a pointer. TODO
+                    elif not tmp.isdigit():
+                        ithSize = tmp  # Array size given by a complex expression. This is like dynamically allocated blocks. TODO
+                    else:
+                        ithSize = int(tmp)  # Array size given by a constant expression
+
+                    self.varSize[variableContext, n.name].append(ithSize)
+                    tmp_s = tmp_s[tmp_s.find("]") + 1:]
+                    i = i - 1
 
             # This is used later on to see if a pointer is ever associated with a malloc()
-            self.varMallocd[variableContext,n.name] = False
+            self.varMallocd[variableContext, n.name] = False
 
         return s
 
-
-    def _generate_type(self, n, modifiers=[], emit_declname = True):
+    def _generate_type(self, n, modifiers=[], emit_declname=True):
         """ Recursive generation from a type node. n is the type node.
             modifiers collects the PtrDecl, ArrayDecl and FuncDecl modifiers
             encountered on the way down to a TypeDecl, to allow proper
             generation from it.
         """
         typ = type(n)
-        #~ print(n, modifiers)
+        # ~ print(n, modifiers)
 
         retstr = ''
 
@@ -1018,7 +1014,7 @@ class Parser(pycparser.c_generator.CGenerator):
             #
             for i, modifier in enumerate(modifiers):
                 if isinstance(modifier, pycparser.c_ast.ArrayDecl):
-                    if (i != 0 and isinstance(modifiers[i - 1], pycparser.c_ast.PtrDecl)):                   # array-of-pointers
+                    if (i != 0 and isinstance(modifiers[i - 1], pycparser.c_ast.PtrDecl)):  # array-of-pointers
                         ### print "   CASE I ARRAY-OF-POINTERS[%s]" % self.__symbolsstack[-1]
                         nstr = '(' + nstr + ')'
                     nstr += '[' + self.visit(modifier.dim) + ']'
@@ -1028,12 +1024,14 @@ class Parser(pycparser.c_generator.CGenerator):
                         nstr = '(' + nstr + ')'
 
                         if not self.parsingTypedef:
-                            if not self.parsingStruct: variableContext = self.currentFunct
-                            else: variableContext = self.currentStruct
+                            if not self.parsingStruct:
+                                variableContext = self.currentFunct
+                            else:
+                                variableContext = self.currentStruct
 
                             ## print "          [%s,%s]" % (variableContext,self.__symbolsstack[-1])
                             if len(self.__symbolsstack) > 0:
-                                self.varPtrToFunct[variableContext,self.__symbolsstack[-1]] = True
+                                self.varPtrToFunct[variableContext, self.__symbolsstack[-1]] = True
 
                     nstr += '(' + self.visit(modifier.args) + ')'
 
@@ -1052,7 +1050,7 @@ class Parser(pycparser.c_generator.CGenerator):
             # strip the names of the parameters (e.g. names of parameters in a pointer to function).
             #
             if self.__stack.count('ParamList') > 1 and n.declname:
-                retstr = retstr[:retstr.rfind(str(n.declname))-1]
+                retstr = retstr[:retstr.rfind(str(n.declname)) - 1]
                 if retstr[-1] == ' ': retstr = retstr[:-1]
 
         elif typ == pycparser.c_ast.Decl:
@@ -1068,9 +1066,9 @@ class Parser(pycparser.c_generator.CGenerator):
 
         return retstr
 
-#S: added to handle casting in pthread creation
+    # S: added to handle casting in pthread creation
     def visit_Cast(self, n):
-        if self.skipParenthesis: 
-           s = '(' + self._generate_type(n.to_type) + ')'
-           return s + ' ' + self.visit(n.expr)
-        return super(self.__class__,self).visit_Cast(n)
+        if self.skipParenthesis:
+            s = '(' + self._generate_type(n.to_type) + ')'
+            return s + ' ' + self.visit(n.expr)
+        return super(self.__class__, self).visit_Cast(n)
