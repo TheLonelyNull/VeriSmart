@@ -158,16 +158,25 @@ class feeder(core.module.BasicModule):
 
 		# Specific option for backend
 		backendOpt = {}
-		backendOpt['stop-on-fail'] = True if (self.getInputParamValue('stop-on-fail') is not None or
-											self.getInputParamValue('cex') is not None) else False
-		backendOpt['bounds-check'] =  True if self.getInputParamValue('bounds-check') is not None else False
-		backendOpt['div-by-zero-check'] =  True if self.getInputParamValue('div-by-zero-check') is not None else False
-		backendOpt['pointer-check'] =  True if self.getInputParamValue('pointer-check') is not None else False
-		backendOpt['memory-leak-check'] =  True if self.getInputParamValue('memory-leak-check') is not None else False
-		backendOpt['signed-overflow-check'] =  True if self.getInputParamValue('signed-overflow-check') is not None else False
-		backendOpt['unsigned-overflow-check'] =  True if self.getInputParamValue('unsigned-overflow-check') is not None else False
-		backendOpt['float-overflow-check'] =  True if self.getInputParamValue('float-overflow-check') is not None else False
-		backendOpt['nan-check'] =  True if self.getInputParamValue('nan-check') is not None else False
+		backendOpt['stop-on-fail'] = env.stop_on_fail or env.cex
+		# True if (self.getInputParamValue('stop-on-fail') is not None or
+		#self.getInputParamValue('cex') is not None) else False
+		backendOpt['bounds-check'] = env.bounds_check
+		#True if self.getInputParamValue('bounds-check') is not None else False
+		backendOpt['div-by-zero-check'] = env.div_by_zero_check
+		#True if self.getInputParamValue('div-by-zero-check') is not None else False
+		backendOpt['pointer-check'] = env.pointer_check
+		#True if self.getInputParamValue('pointer-check') is not None else False
+		backendOpt['memory-leak-check'] = env.memory_leak_check
+		#True if self.getInputParamValue('memory-leak-check') is not None else False
+		backendOpt['signed-overflow-check'] = env.signed_overflow_check
+		#True if self.getInputParamValue('signed-overflow-check') is not None else False
+		backendOpt['unsigned-overflow-check'] = env.unsigned_overflow_check
+		#True if self.getInputParamValue('unsigned-overflow-check') is not None else False
+		backendOpt['float-overflow-check'] = env.float_overflow_check
+		#True if self.getInputParamValue('float-overflow-check') is not None else False
+		backendOpt['nan-check'] = env.nan_check
+		#True if self.getInputParamValue('nan-check') is not None else False
 		backendOpt['overflow-check'] =  True if self.getInputParamValue('overflow-check') is not None else False
 
 		'''
@@ -177,18 +186,37 @@ class feeder(core.module.BasicModule):
 		'''
 
 		#Caledem
-		seqfile = core.utils.rreplace(env.inputfile, '/', '/_cs_', 1) if '/' in env.inputfile else '_cs_' + env.inputfile
-
 		if env.isSwarm:
-			seqfile = env.inputfile[:-2] + '.swarm%s/' % env.suffix+ "_cs_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
+			if env.enableDR:
+				if env.no_shadow:
+					seqfile = env.inputfile[:-2] + '.swarm%s/' % env.suffix+ "_csdr_ns_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
+				else:
+					seqfile = env.inputfile[:-2] + '.swarm%s/' % env.suffix+ "_csdr_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
+			else:
+				seqfile = env.inputfile[:-2] + '.swarm%s/' % env.suffix+ "_cs_" + self.__filename + "__instance_0_" + self.__confignumber + ".c"
+
+		else:
+			if env.enableDR:
+				if env.no_shadow:
+					seqfile = core.utils.rreplace(env.inputfile, '/', '/_csdr_ns_', 1) if '/' in env.inputfile else '_csdr_ns_' + env.inputfile
+				else:
+					seqfile = core.utils.rreplace(env.inputfile, '/', '/_csdr_', 1) if '/' in env.inputfile else '_csdr_' + env.inputfile
+			else:
+				seqfile = core.utils.rreplace(env.inputfile, '/', '/_cs_', 1) if '/' in env.inputfile else '_cs_' + env.inputfile
+
 
 		if env.outputfile is not None and env.outputfile != '':
 			seqfile = env.outputfile
 
 		logfile = seqfile + '.' + backend + '.log' if witness is None else witness
-
+		
+		os.makedirs(os.path.dirname(seqfile), exist_ok=True)
 		core.utils.saveFile(seqfile, string)
 
+		if env.instances_only:
+			return True
+
+		
 		''' Run the verification tool on the input file '''
 		# if self.verbose: print "output: %s" % (seqfile)
 		timeBeforeCallingBackend = time.time()    # save wall time

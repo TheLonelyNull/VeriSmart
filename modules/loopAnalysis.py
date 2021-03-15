@@ -100,6 +100,7 @@ class loopAnalysis(core.module.Translator):
 		manager = multiprocessing.Manager()
 		results = manager.Queue()
 		foundbug = False
+		error = False
 		foundtime = 0
 		sentinel = object()
 
@@ -116,6 +117,8 @@ class loopAnalysis(core.module.Translator):
 													 filename[:-2],), callback=logResults)
 			for instance, confignumber, configintervals in instanceIterator:
 				out = results.get()
+				if out == "ERROR":
+					error = True
 				if out is False and not foundbug:
 					foundtime = time.time() - env.starttime
 					foundbug = True
@@ -148,8 +151,15 @@ class loopAnalysis(core.module.Translator):
 					foundbug = True
 					foundtime = time.time() - env.starttime
 					break
-
+				if out == "ERROR":
+					error = True
+					break	
+			
 		totaltime = time.time() - env.starttime
+		
+		if error:
+			self.printError(totaltime, env.inputfile, env.isSwarm)
+			return
 		if foundbug:
 			self.printIsUnsafe(totaltime, foundtime,
 							   env.inputfile, env.isSwarm)
@@ -185,7 +195,8 @@ class loopAnalysis(core.module.Translator):
 						for sub in (
 							("$I1", ''),
 							("$I2", '__CSEQ_rawline("IF(%s,%s,t%s_%s)");' % (self.__threadIndex[tName], count, tName, count + 1)),
-							("$I3", "")):
+							("$I3", ""),
+							("$L", str(count))):
     							stringToStrip = stringToStrip.replace(*sub)
 						output.append(stringToStrip)
 						count += 1
@@ -195,7 +206,8 @@ class loopAnalysis(core.module.Translator):
 						for sub in (
 							("$I1", '__CSEQ_rawline("t%s_%s:");\n'% (tName, count)),
 							("$I2", '__CSEQ_rawline("IF(%s,%s,t%s_%s)");' % (self.__threadIndex[tName], count, tName, count + 1)),
-							("$I3", "")):
+							("$I3", ""),
+							("$L", str(count))):
     							stringToStrip = stringToStrip.replace(*sub)
 						output.append(stringToStrip)
 						count += 1
@@ -383,9 +395,6 @@ class loopAnalysis(core.module.Translator):
 				m.loadfromstring(output, env)
 				output = m.getoutput()
 
-				#Exit on instrumenter (to find a better way)
-				if env.instances_only:
-					return True
 
 				# linemapping only works on Translator (C-to-C) modules
 				if "inputtooutput" in dir(m):
@@ -396,6 +405,8 @@ class loopAnalysis(core.module.Translator):
 				print("Chain interrupted by user")
 				sys.exit(1)
 
+		if env.instances_only:
+			return True
 		cbmcresult = output[0]
 		memsize = output[1]
 		processedResult = self.processResult(cbmcresult, env.backend)
@@ -405,11 +416,21 @@ class loopAnalysis(core.module.Translator):
 				self.printNoFoundBug(confignumber.replace(
 					"s", ""), memsize, analysistime)
 			return True
-		if processedResult == "FALSE":
+		elif processedResult == "FALSE":
 			if env.isSwarm:
 				self.printFoundBug(confignumber.replace(
 					"s", ""), memsize, analysistime)
 			return False
+
+		else:
+			if env.isSwarm:
+				self.printUnknown(confignumber.replace(
+					"s", ""))
+			return "ERROR"
+		sys.stdout.flush()
+
+	def printUnknown(self, index):
+		print("{0:10}{1:20}".format("[#" + str(index) + "]", utils.colors.YELLOW + "UNKNOWN" + utils.colors.NO,))
 		sys.stdout.flush()
 
 	def printNoFoundBug(self, index, memsize, analysistime):
@@ -437,6 +458,13 @@ class loopAnalysis(core.module.Translator):
 			print("Found time : " + "%0.2fs" % foundtime)
 		print(inputfile + utils.colors.RED + " FALSE " +
 			  utils.colors.NO + ", %0.2fs" % totalTime)
+		sys.stdout.flush()
+
+	def printError(self, totalTime, inputfile, isSwarm):
+		if isSwarm:
+			print("======================================================")
+		print(inputfile + utils.colors.YELLOW + " UNKNOWN " +
+			utils.colors.NO + ", %0.2fs" % totalTime)
 		sys.stdout.flush()
 
 	def processResult(self, result, format):
