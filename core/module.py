@@ -30,6 +30,8 @@ Changelog:
 	2014.06.02  introduced specific  module.ModuleError  exception for detailed error handling
 
 """
+from core.parser import Parser
+
 VERSION = 'module-1.0-2017.08.23'
 # VERSION = 'module-0.0-2015.07.16'
 # VERSION = 'module-0.0-2015.07.03'
@@ -210,7 +212,8 @@ class Translator(BasicModule,pycparser.c_generator.CGenerator):
 		super(Translator,self).__init__()
 
 		# Parser module to generate the AST, the symbol table and other data structs.
-		self.Parser = parser.Parser()
+		self.Parser = Parser.get_instance()
+		self.Parser.reset()
 
 		# Coords for the last AST node visited
 		self.lastInputCoords = ''         # coords, example: ':245'

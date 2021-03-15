@@ -62,6 +62,7 @@ class Parser(pycparser.c_generator.CGenerator):
     __sourcecode = ''
     __stack = []
     __fields_to_fill = None
+    __instance = None
 
     """ Uses the same visitor pattern as c_ast.NodeVisitor, but modified to
         return a value from each visit method, using string accumulation in
@@ -69,9 +70,22 @@ class Parser(pycparser.c_generator.CGenerator):
     """
 
     def __init__(self):
+        if Parser.__instance is not None:
+            raise Exception("This class is a singleton!")
+        else:
+            Parser.__instance = self
         self.reset()
 
+    @staticmethod
+    def get_instance():
+        if Parser.__instance is None:
+            Parser()
+        return Parser.__instance
+
     def reset(self):
+        self.__sourcecode = ''
+        self.__stack = []
+        self.__fields_to_fill = None
         ###### NEW PARSING TABLE START #####
         self.symbols = []  # _all_ the symbols (function names, variables, struct names, .... ) TODO this needs to be checked & finished properly
         self.blocks = {}
