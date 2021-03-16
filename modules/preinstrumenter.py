@@ -64,7 +64,7 @@ class preinstrumenter(core.module.Translator):
         backend = self.getInputParamValue('backend')
         if backend == 'klee' and 'malloc' in core.common.changeID:
             core.common.changeID['malloc'] = 'malloc'  # use normal malloc
-        super(self.__class__, self).loadfromstring(string, env, fill_only_fields=['funcBlock'])
+        super(self.__class__, self).loadfromstring(string, env, fill_only_fields=['funcName'])
 
     '''
     def visit_Assignment(self, n):
@@ -93,7 +93,7 @@ class preinstrumenter(core.module.Translator):
             return n.name + ':\n' + self._generate_stmt(n.stmt)
 
     def visit_ID(self, n):
-        if n.name.startswith('pthread_') and n.name not in core.common.changeID and n.name not in self.Parser.funcBlock:
+        if n.name.startswith('pthread_') and n.name not in core.common.changeID and n.name not in self.Parser.funcName:
             if not n.name.startswith('pthread_t_'):
                 self.warn("%s is not handled.\n" % n.name)
 

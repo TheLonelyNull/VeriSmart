@@ -87,7 +87,7 @@ class shortcircuitconverter(core.module.Translator):
         fref = self._parenthesize_unless_simple(n.name)
         args = self.visit(n.args)
 
-        if fref in self.Parser.funcBody:
+        if fref in self.Parser.funcName:
             self.funcCallFound = True
 
         inl = fref + '(' + args + ')'
@@ -95,5 +95,5 @@ class shortcircuitconverter(core.module.Translator):
         return inl
 
     def loadfromstring(self, string, env, fill_only_fields=None):
-        super(self.__class__, self).loadfromstring(string, env, fill_only_fields=['funcBody'])
+        super(self.__class__, self).loadfromstring(string, env, fill_only_fields=['funcName'])
 

@@ -162,22 +162,19 @@ class duplicator(core.module.Translator):
 
     def visit_FuncDef(self, n):
         block = ''
+        decl = self.visit(n.decl)
+        body = self.visit(n.body)
 
         if n.decl.name == 'main':
-            decl = self.visit(n.decl)
-            body = self.visit(n.body)
             block = decl + '\n' + body + '\n'
         elif n.decl.name not in self.Parser.threadName: # visitin a non-thread function
             ##block = self.Parser.funcBlock[n.decl.name] broken
-            decl = self.visit(n.decl)
-            body = self.visit(n.body)
             block = decl + '\n' + body + '\n'
         else: # visiting a thread function
-            #print "duplicating thread %s, %s times\n" % (n.decl.name, self.Parser.threadCallCnt[n.decl.name])
-            for i in range(0, self.Parser.threadCallCnt[n.decl.name]):
+            for i in range(self.Parser.threadCallCnt[n.decl.name]):
                 oldlineslen = len(self.lines) # save the number of entries in self.lines so after the visit() we can rever them back
 
-                tmp = self.visit(n.decl) + '\n' + self.visit(n.body) + '\n'
+                tmp = decl + '\n' + body + '\n'
                 tmp = tmp.replace(n.decl.name, n.decl.name+'_'+str(i), 1)   # TODO this needs proper implementation
 
                 self.__threadsnamesmap[n.decl.name+'_'+str(i)] = n.decl.name # map the renamed function

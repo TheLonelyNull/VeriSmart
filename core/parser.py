@@ -225,15 +225,15 @@ class Parser(pycparser.c_generator.CGenerator):
     '''
 
     def loadfromstring(self, string, fill_only_fields=None):
-        profiler = cProfile.Profile()
-        profiler.enable(subcalls=True)
+        #profiler = cProfile.Profile()
+        #profiler.enable(subcalls=True)
         self.ast = pycparser.c_parser.CParser().parse(string)
         if fill_only_fields is None or len(fill_only_fields) > 0:
             self.__fields_to_fill = fill_only_fields
             self.__sourcecode = self.visit(self.ast)
-        profiler.disable()
-        stats = pstats.Stats(profiler).sort_stats('cumtime')
-        stats.print_stats()
+        #profiler.disable()
+        #stats = pstats.Stats(profiler).sort_stats('cumtime')
+        # stats.print_stats()
 
     def show(self):
         # print utils.strip(self.__sourcecode)
@@ -411,7 +411,7 @@ class Parser(pycparser.c_generator.CGenerator):
         lineCoords = ''
 
         if (not isinstance(node, pycparser.c_ast.FileAST) and
-                str(node) != 'None'
+                node is not None
                 and self.indent_level == 0
                 and node.coord is not None):
             ##print "       VISITING %s - %s" % (str(node), node.coord)
@@ -545,6 +545,7 @@ class Parser(pycparser.c_generator.CGenerator):
                                  'varOccurrence', 'varSize', 'varDereferenced', 'funcBlock', 'funcBody', 'funcBlockOut',
                                  'funcBlockIn']
         decl = ''
+        visited_decl = False
         if self.__fields_to_fill is None or any(item in only_call_when_fields for item in self.__fields_to_fill):
             decl = self.visit(n.decl)
 
@@ -682,7 +683,7 @@ class Parser(pycparser.c_generator.CGenerator):
             else:
                 s += ' = ' + self.visit(n.init)
 
-        if 'FuncDecl' in str(n.type) and self.currentFunct == '':
+        if isinstance(n.type, pycparser.c_ast.FuncDecl) and self.currentFunct == '':
             # print "function %s   decl %s   currentFunct %s\n\n" % (n.name, s, self.currentFunct)
             self.funcDecl[n.name] = s
 

@@ -43,7 +43,7 @@ class condwaitconverter(core.module.Translator):
             return out
 
         return fref + '(' + self.visit(n.args) + ')'
-        return super(self.__class__, self).visit_FuncCall(n)
+        # return super(self.__class__, self).visit_FuncCall(n) unreachable
 
     def loadfromstring(self, string, env, fill_only_fields=None):
         super(self.__class__, self).loadfromstring(string, env, fill_only_fields=[])

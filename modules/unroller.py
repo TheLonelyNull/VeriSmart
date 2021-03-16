@@ -54,7 +54,6 @@ Changelog:
 
 """
 
-import re, datetime
 import pycparser.c_parser, pycparser.c_ast, pycparser.c_generator
 import core.common, core.module, core.parser, core.utils
 

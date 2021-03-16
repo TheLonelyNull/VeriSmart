@@ -797,6 +797,7 @@ def main():
             m.loadfromstring(output, cseqenv)
             output = m.getoutput()
 
+
             if "inputtooutput" in dir(m):  # linemapping only works on Translator (C-to-C) modules
                 cseqenv.maps.append(m.outputtoinput)
                 cseqenv.lastlinenoinlastmodule = m.output.count("\n")
@@ -807,8 +808,9 @@ def main():
                 core.utils.saveFile("%s/_%s_output__%s.c" % (cseqenv.debugpath, fileno, m.getname()), m.output)
                 try:
                     # core.utils.saveFile("%s/_%s_ast__%s.c" % (cseqenv.debugpath,fileno,m.getname()), str(m.Parser.ast.show()))
-                    core.utils.saveFile("%s/_%s_symbols__%s.c" % (cseqenv.debugpath, fileno, m.getname()),
-                                        m.Parser.printsymbols())
+                    #core.utils.saveFile("%s/_%s_symbols__%s.c" % (cseqenv.debugpath, fileno, m.getname()),
+                    #                    m.Parser.printsymbols())
+                    pass
                 except AttributeError:
                     pass
                 print("[%s] ok %0.2fs */" % (fileno, int(time.time()) - int(timeBefore)))
@@ -816,8 +818,8 @@ def main():
 
             if cseqenv.debug and "markedoutput" in dir(m):  # current module is a Translator
                 core.utils.saveFile("%s/_%s_marked__%s.c" % (cseqenv.debugpath, fileno, m.getname()), m.markedoutput)
-                core.utils.saveFile("%s/_%s_linemap__%s.c" % (cseqenv.debugpath, fileno, m.getname()),
-                                    m.getlinenumbertable())
+                #core.utils.saveFile("%s/_%s_linemap__%s.c" % (cseqenv.debugpath, fileno, m.getname()),
+                #                    m.getlinenumbertable())
 
         except ParseError as e:
             print("Parse error (%s) while performing %s->%s:\n" % (str(e),
@@ -846,7 +848,9 @@ def main():
                      cseqenv.modules[cseqenv.transforms].getname()))
             traceback.print_exc(file=sys.stdout)
             sys.exit(1)
-
+        #profiler.disable()
+        #stats = pstats.Stats(profiler).sort_stats('cumtime')
+        #stats.print_stats()
     cachedOutput = output
     # For the sack of preanalysis
     temporaryfile = NamedTemporaryFile()
@@ -1376,7 +1380,6 @@ def main():
         """              """
         """ III. Merging """
         """              """
-
         # Load the input file.
         input = core.utils.printFileRows(cseqenv.inputfile)
 

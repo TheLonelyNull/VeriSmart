@@ -3,10 +3,10 @@
     maintained by Truc Nguyen Lam, University of Southampton.
 """
 VERSION = 'conditionextractor-0.0-2015.07.02'
-#VERSION = 'extractor-0.0-2014.12.24'    # CSeq-1.0beta
-#VERSION = 'extractor-0.0-2014.06.03'    # CSeq-Lazy-0.6: newseq-0.6a, newseq-0.6c, SVCOMP15
-#VERSION = 'extractor-0.0-2014.03.14'
-#VERSION = 'extractor-0.0-2014.02.25' (CSeq-lazy-0.2)
+# VERSION = 'extractor-0.0-2014.12.24'    # CSeq-1.0beta
+# VERSION = 'extractor-0.0-2014.06.03'    # CSeq-Lazy-0.6: newseq-0.6a, newseq-0.6c, SVCOMP15
+# VERSION = 'extractor-0.0-2014.03.14'
+# VERSION = 'extractor-0.0-2014.02.25' (CSeq-lazy-0.2)
 """
 
 Transformation from:
@@ -72,8 +72,9 @@ class conditionextractor(core.module.Translator):
             cond = self.visit(n.cond)
 
             ###if self.funcCallFound == True:
-            if True:   # force temporary variables regardless of the complexity of the expression
-                extraBlock = ';_Bool __cs_tmp_if_cond_%s; __cs_tmp_if_cond_%s = (%s); ' % (self.ifCondCount, self.ifCondCount, cond)
+            if True:  # force temporary variables regardless of the complexity of the expression
+                extraBlock = ';_Bool __cs_tmp_if_cond_%s; __cs_tmp_if_cond_%s = (%s); ' % (
+                    self.ifCondCount, self.ifCondCount, cond)
                 s += '__cs_tmp_if_cond_%s' % (self.ifCondCount)
                 s = extraBlock + '\n' + self._make_indent() + s
                 self.ifCondCount += 1
@@ -102,10 +103,8 @@ class conditionextractor(core.module.Translator):
 
         return s
 
-
     def visit_DoWhile(self, n):
         self.error("do..while loop in input code.")
-
 
     def visit_While(self, n):
         cond = ''
@@ -120,7 +119,8 @@ class conditionextractor(core.module.Translator):
             cond = self.visit(n.cond)
 
             if self.funcCallFound == True:
-                extraBlock = ';_Bool __cs_tmp_while_cond_%s; __cs_tmp_while_cond_%s = (%s); ' % (self.whileCondCount, self.whileCondCount, cond)
+                extraBlock = ';_Bool __cs_tmp_while_cond_%s; __cs_tmp_while_cond_%s = (%s); ' % (
+                    self.whileCondCount, self.whileCondCount, cond)
                 s += '__cs_tmp_while_cond_%s' % (self.whileCondCount)
                 s = extraBlock + '\n' + self._make_indent() + s
                 s += ')\n'
@@ -146,7 +146,6 @@ class conditionextractor(core.module.Translator):
 
         return s + t
 
-
     def visit_For(self, n):
         init = cond = next = ''
         extraBlock = ''
@@ -161,7 +160,8 @@ class conditionextractor(core.module.Translator):
             self.funcCallFound = False
 
             if self.funcCallFound == True:
-                extraBlock = ';_Bool __cs_tmp_for_cond_%s; __cs_tmp_for_cond_%s = (%s);\n' % (self.forCondCount, self.forCondCount, cond) + self._make_indent()
+                extraBlock = ';_Bool __cs_tmp_for_cond_%s; __cs_tmp_for_cond_%s = (%s);\n' % (
+                    self.forCondCount, self.forCondCount, cond) + self._make_indent()
 
                 # add brakets for single non parenthesised statements after if
                 # if not t.startswith(self._make_indent()+ ('{\n')):
@@ -179,12 +179,10 @@ class conditionextractor(core.module.Translator):
 
         return extraBlock + s + t
 
-
     def visit_FuncCall(self, n):
         fref = self._parenthesize_unless_simple(n.name)
         args = self.visit(n.args)
-
-        if fref in self.Parser.funcBlockIn:
+        if fref in self.Parser.funcName:
             self.funcCallFound = True
 
         if n.args is None:
@@ -195,17 +193,4 @@ class conditionextractor(core.module.Translator):
         return inl
 
     def loadfromstring(self, string, env, fill_only_fields=None):
-        super(self.__class__, self).loadfromstring(string, env, fill_only_fields=['funcBody'])
-
-
-
-
-
-
-
-
-
-
-
-
-
+        super(self.__class__, self).loadfromstring(string, env, fill_only_fields=['funcName'])
