@@ -109,6 +109,9 @@ class Parser(pycparser.c_generator.CGenerator):
         self.threadCount = 0  # pthread create()s found so far
         self.threadIndex = {}  # index of the thread = value of threadcount when the pthread_create to that thread was discovered
 
+        self.threadOccurenceCount = 0  #
+        self.threadOccurenceIndex = {}
+
         self.lastStmt = ''  # last statement generated
         self.lastFuncStmt = {}  # last statement for each function
 
@@ -225,15 +228,21 @@ class Parser(pycparser.c_generator.CGenerator):
     '''
 
     def loadfromstring(self, string, fill_only_fields=None):
-        #profiler = cProfile.Profile()
-        #profiler.enable(subcalls=True)
         self.ast = pycparser.c_parser.CParser().parse(string)
         if fill_only_fields is None or len(fill_only_fields) > 0:
             self.__fields_to_fill = fill_only_fields
             self.__sourcecode = self.visit(self.ast)
-        #profiler.disable()
-        #stats = pstats.Stats(profiler).sort_stats('cumtime')
-        # stats.print_stats()
+            self.collapse_occurence_index()
+
+    def collapse_occurence_index(self):
+        tmp = {}
+        # remove not thread function calls and fix indexes
+        i = 0
+        for key in self.threadOccurenceIndex:
+            if key in self.threadName or key == 'main':
+                tmp[key] = i
+                i += 1
+        self.threadOccurenceIndex = tmp
 
     def show(self):
         # print utils.strip(self.__sourcecode)
@@ -508,11 +517,15 @@ class Parser(pycparser.c_generator.CGenerator):
         # Typical  typedef struct  statement...
         # TODO this should be reimplemented using AST visits.
         if typestring.startswith("struct "):
+            ## print "     adding typedef name '" +s+ "'"
+            ## print "     adding typedef type '" +typestring+ "'"
             leftPart = typestring[:typestring.find('{')]
             if leftPart.endswith(' '): leftPart = leftPart[:-1]
             if leftPart.endswith('\n'): leftPart = leftPart[:-1]
             if leftPart.endswith(' '): leftPart = leftPart[:-1]
             rightPart = typestring[typestring.rfind('} ') + 2:]
+            ## print "      LEFT: '" + leftPart + "'"
+            ## print "      RIGHT: '" + rightPart + "'"
             self.typedefs.append(rightPart)
             self.typedefExpansion[rightPart] = leftPart
 
@@ -578,6 +591,12 @@ class Parser(pycparser.c_generator.CGenerator):
         self.lastFuncStmt[self.currentFunct] = self.lastStmt
         # print "VISITING  %s  LAST STMT %s\n\n" % (self.currentFunct, self.lastStmt)
         self.currentFunct = ''
+
+        # C.J Rossouw
+        # This information is being tracked for functionality in lazeseqnewschedule
+        # and following modules in order to track thread occurence before function declaration
+        self.threadOccurenceIndex[n.decl.name] = self.threadOccurenceCount
+        self.threadOccurenceCount = self.threadOccurenceCount + 1
 
         return funcBlock
 

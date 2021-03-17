@@ -28,12 +28,15 @@ class loopAnalysis(core.module.Translator):
 		pass
 
 	def loadfromstring(self, seqcode, env, fill_only_fields=None):
-
 		self.__lines = self.getInputParamValue('lines')
 		self.__threadName = self.getInputParamValue('threadNames')
 		self.__threadIndex = self.getInputParamValue('threadIndex')
 		self.__threadBound = len(self.__threadName)
-
+		# 17/03/2021 C.J Rossouw
+		# Avoid crash due to functions being called before declaration,  this uses map from before without reseting parser values
+		self.__threadIndex = self.Parser.threadOccurenceIndex
+		print(self.__threadIndex)
+		print('Here')
 		cs = "Number of context-switch of each thread:"
 		for t in self.__lines:
 			cs += "\n%s : %s" %(t, str(self.__lines[t]))

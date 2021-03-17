@@ -179,7 +179,6 @@ class varnames(core.module.Translator):
 
 	def visit_ID(self, n):
 		prefix = ''
-
 		#print self.Parser.varNames
 		#if n.name in self.Parser.varNames[self.__currentFunction] and self.Parser.varKind[self.__currentFunction,n.name] == 'p':
 		if n.name in self.Parser.varNames[self.__currentFunction]:
