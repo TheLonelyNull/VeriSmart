@@ -826,7 +826,8 @@ class Parser(pycparser.c_generator.CGenerator):
             if n.funcspec: s = ' '.join(n.funcspec) + ' '
             if n.storage: s += ' '.join(n.storage) + ' '
 
-            s += self._generate_type(n.type)
+        # 18/03/2021 C.J Rossouw always generate type otherwise varnames is not filled correctly
+        s += self._generate_type(n.type)
 
         # use flags to keep track through recursive calls of what is being parsed (END)
         if isinstance(n.type, pycparser.c_ast.FuncDecl):
