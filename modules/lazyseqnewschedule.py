@@ -540,7 +540,6 @@ class lazyseqnewschedule(core.module.Translator):
 						code = self.visit(stmt.stmt) + ';\n'
 
 					guard = ''
-					threadIndex = self.Parser.threadOccurenceIndex[self.__currentThread]
 					if not self.__atomic:
 						guard = '$G'
 					code = self._make_indent() + stmt.name + ': ' + guard + code + '\n'
