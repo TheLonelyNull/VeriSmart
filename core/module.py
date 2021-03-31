@@ -303,17 +303,16 @@ class Translator(BasicModule, pycparser.c_generator.CGenerator):
         offset = h.count('\n')
         self.output = h + self.output
 
-        if self.__produce_counter_examples:
-            # Shift linemapping accordingly.
-            for i in range(1, max(self.inputtooutput)):
-                if i in self.inputtooutput:
-                    self.inputtooutput[i] += offset
+        # Shift linemapping accordingly.
+        for i in range(1, max(self.inputtooutput)):
+            if i in self.inputtooutput:
+                self.inputtooutput[i] += offset
 
-            # for i in range(max(self.outputtoinput),1):
-            for i in reversed(range(1, max(self.outputtoinput))):
-                if i in self.outputtoinput:
-                    self.outputtoinput[i + offset] = self.outputtoinput[i]
-                    self.outputtoinput[i] = -1
+        # for i in range(max(self.outputtoinput),1):
+        for i in reversed(range(1, max(self.outputtoinput))):
+            if i in self.outputtoinput:
+                self.outputtoinput[i + offset] = self.outputtoinput[i]
+                self.outputtoinput[i] = -1
 
     def removelinenumbers(self):
         '''
@@ -397,8 +396,7 @@ class Translator(BasicModule, pycparser.c_generator.CGenerator):
 
         # Generate the linemap and remove linemarkers from self.output
         self.removeemptylines()
-        if self.__produce_counter_examples:
-            self.generatelinenumbers()
+        self.generatelinenumbers()
 
     def getlinenumbertable(self):
         linenumbers = ''

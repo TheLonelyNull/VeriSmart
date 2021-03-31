@@ -35,15 +35,12 @@ class loopAnalysis(core.module.Translator):
 		# 17/03/2021 C.J Rossouw
 		# Avoid crash due to functions being called before declaration,  this uses map from before without reseting parser values
 		self.__threadIndex = self.Parser.threadOccurenceIndex
-		print(self.__threadIndex)
-		print('Here')
 		cs = "Number of context-switch of each thread:"
 		for t in self.__lines:
 			cs += "\n%s : %s" %(t, str(self.__lines[t]))
 			
 		if env.show_cs:
 			print(cs)
-
 		# Generating configuration file
 		if env.config_file == "":
 			if not env.automatic:
@@ -70,7 +67,6 @@ class loopAnalysis(core.module.Translator):
 				else:
 					print("Generating instances with limit %s" %
 						  env.instances_limit)
-
 		dirname, filename = os.path.split(os.path.abspath(env.inputfile))
 		swarmdirname = dirname + "/" + filename[:-2] + '.swarm%s/' % env.suffix
 		instanceIterator = self.generateInstanceIterator(
