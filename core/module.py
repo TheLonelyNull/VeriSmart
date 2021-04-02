@@ -303,16 +303,17 @@ class Translator(BasicModule, pycparser.c_generator.CGenerator):
         offset = h.count('\n')
         self.output = h + self.output
 
-        # Shift linemapping accordingly.
-        for i in range(1, max(self.inputtooutput)):
-            if i in self.inputtooutput:
-                self.inputtooutput[i] += offset
+        if self.__produce_counter_examples:
+            # Shift linemapping accordingly.
+            for i in range(1, max(self.inputtooutput)):
+                if i in self.inputtooutput:
+                    self.inputtooutput[i] += offset
 
-        # for i in range(max(self.outputtoinput),1):
-        for i in reversed(range(1, max(self.outputtoinput))):
-            if i in self.outputtoinput:
-                self.outputtoinput[i + offset] = self.outputtoinput[i]
-                self.outputtoinput[i] = -1
+            # for i in range(max(self.outputtoinput),1):
+            for i in reversed(range(1, max(self.outputtoinput))):
+                if i in self.outputtoinput:
+                    self.outputtoinput[i + offset] = self.outputtoinput[i]
+                    self.outputtoinput[i] = -1
 
     def removelinenumbers(self):
         '''
@@ -353,23 +354,24 @@ class Translator(BasicModule, pycparser.c_generator.CGenerator):
         #                    ^        offset         ^
         #                   top                   bottom
 
-        # Shift linemapping accordingly.
-        for i in reversed(range(1, max(self.inputtooutput))):
-            if i in self.inputtooutput:
-                if self.inputtooutput[i] > bottom:
-                    # Shift back if output line in region 2
-                    self.inputtooutput[i] -= offset
-                elif self.inputtooutput[i] >= top:
-                    # Map to -1 if output line in removed region
-                    self.inputtooutput[i] = -1
+        if self.__produce_counter_examples:
+            # Shift linemapping accordingly.
+            for i in reversed(range(1, max(self.inputtooutput))):
+                if i in self.inputtooutput:
+                    if self.inputtooutput[i] > bottom:
+                        # Shift back if output line in region 2
+                        self.inputtooutput[i] -= offset
+                    elif self.inputtooutput[i] >= top:
+                        # Map to -1 if output line in removed region
+                        self.inputtooutput[i] = -1
 
-        # #for i in range(max(self.outputtoinput),1):
-        m = max(self.outputtoinput)
-        for i in range(top, m):
-            if (i + offset) in self.outputtoinput:
-                self.outputtoinput[i] = self.outputtoinput[i + offset]
-            elif i + offset > m:
-                self.outputtoinput[i] = -1
+            # #for i in range(max(self.outputtoinput),1):
+            m = max(self.outputtoinput)
+            for i in range(top, m):
+                if (i + offset) in self.outputtoinput:
+                    self.outputtoinput[i] = self.outputtoinput[i + offset]
+                elif i + offset > m:
+                    self.outputtoinput[i] = -1
 
         self.output = s2
 
@@ -396,7 +398,10 @@ class Translator(BasicModule, pycparser.c_generator.CGenerator):
 
         # Generate the linemap and remove linemarkers from self.output
         self.removeemptylines()
-        self.generatelinenumbers()
+        if self.__produce_counter_examples:
+            self.generatelinenumbers()
+        else:
+            self.remove_line_numbers()
 
     def getlinenumbertable(self):
         linenumbers = ''
@@ -412,6 +417,21 @@ class Translator(BasicModule, pycparser.c_generator.CGenerator):
 
         for line in self.output.splitlines():
             if line.strip() != '':
+                cleanoutput += line + '\n'
+
+        self.output = cleanoutput
+
+    def remove_line_numbers(self):
+        """
+        Removes lines containing line number information without actually computing them as generatelinenumbers does.
+        This function is called when produce_counter_examples is false, generatelinenumbers is called otherwise
+        """
+        cleanoutput = ''  # output without linemarkers
+
+        for line in self.output.splitlines():
+            if line.startswith('# '):
+                continue
+            else:
                 cleanoutput += line + '\n'
 
         self.output = cleanoutput
