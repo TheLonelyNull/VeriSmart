@@ -553,7 +553,7 @@ class lazyseqnewschedule(core.module.Translator):
 					globalAccess = self.__globalAccess(stmt)
 					newStmt = ''
 
-					self.lines = []   # override core.module marking behaviour, otherwise  module.visit()  won't insert any marker
+					self.lines = set()   # override core.module marking behaviour, otherwise  module.visit()  won't insert any marker
 
 					# --2-- Now rebuilds the stmt block again,
 					#       this time using the proper formatting

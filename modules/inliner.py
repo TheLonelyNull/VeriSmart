@@ -967,15 +967,15 @@ class inliner(core.module.Translator):
         self.currentFunction.append(fref)
         # inlined = self._shiftIndent(self.visit(self.Parser.funcASTNode[fref].body))
 
-        # save the old length so after the inlining self.lines can be trimmed back to its contents before the inlining,
+        # save  copy of old lines so we may revert it back,
         # this removes the elements added while inlining,
         # otherwise when inlining the same function more than once,
         # the linemapping is only generated on the first inlined function call.
-        oldlineslen = len(self.lines)
+        oldlines = self.lines.copy()
         # self.Parser.funcASTNode[fref].body.show()
         inlined = self.visit(self.Parser.funcASTNode[fref].body)
-        self.functionlines[fref] = self.lines[oldlineslen:]
-        self.lines = self.lines[:oldlineslen]
+        self.functionlines[fref] = self.lines - oldlines
+        self.lines = oldlines
 
         # top
         # ~inlined = inlined.replace(self.INDENT_SPACING+'{', '/*** INLINING START %s ***********************************/\n' % fref + self.INDENT_SPACING + fOutput + self._make_indent() +'{\n' + self._make_indent() + fInput, 1)

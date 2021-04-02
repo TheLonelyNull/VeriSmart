@@ -172,14 +172,14 @@ class duplicator(core.module.Translator):
             block = decl + '\n' + body + '\n'
         else: # visiting a thread function
             for i in range(self.Parser.threadCallCnt[n.decl.name]):
-                oldlineslen = len(self.lines) # save the number of entries in self.lines so after the visit() we can rever them back
+                oldlines = self.lines.copy() # save copy of self.lines so after the visit() we can rever them back
 
                 tmp = decl + '\n' + body + '\n'
                 tmp = tmp.replace(n.decl.name, n.decl.name+'_'+str(i), 1)   # TODO this needs proper implementation
 
                 self.__threadsnamesmap[n.decl.name+'_'+str(i)] = n.decl.name # map the renamed function
 
-                self.lines = self.lines[:oldlineslen] # revert back self.lines otherwise line mapping won't work properly when duplicating threads
+                self.lines = oldlines # revert back self.lines otherwise line mapping won't work properly when duplicating threads
 
                 block += tmp
 

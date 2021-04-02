@@ -247,7 +247,7 @@ class Translator(BasicModule, pycparser.c_generator.CGenerator):
 
         self.currentFunct = ''  # name of the function being parsed ('' = none)
 
-        self.lines = []
+        self.lines = set()
 
         # Input<->Output linemaps
         self.inputtooutput = {}
@@ -288,10 +288,11 @@ class Translator(BasicModule, pycparser.c_generator.CGenerator):
         return (self.indent_level + delta) * self.INDENT_SPACING
 
     def _getCurrentCoords(self, item):
+        if not self.__produce_counter_examples:
+            return ''
         linecoord = utils.removeColumnFromCoord(item.coord)
         ''' NOTE: uncomment instructions below to disable linemapping '''
         # return ''
-
         ''' NOTE: uncomment instructions below to enable linemapping '''
         # lineno = str(item.coord)[1:] if str(item.coord)[0] == ':' else -1 # not valid from pycparser 2.18+
         lineno = linecoord[1:] if linecoord[0] == ':' else -1
@@ -385,14 +386,14 @@ class Translator(BasicModule, pycparser.c_generator.CGenerator):
         self.ast = self.Parser.ast
         self.output = self.visit(self.ast)
 
-        fileno = str(self.cseqenv.transforms + 1).zfill(2)
-
         # Remove any linemarker indentation.
         newoutput = ''
 
-        for line in self.output.splitlines():
-            newoutput += re.sub(r'(%s)*#' % self.INDENT_SPACING, r'#', line) + '\n'
-
+        if self.__produce_counter_examples:
+            for line in self.output.splitlines():
+                newoutput += re.sub(r'(%s)*#' % self.INDENT_SPACING, r'#', line) + '\n'
+        else:
+            newoutput = self.output
         self.markedoutput = newoutput
         self.output = newoutput
 
@@ -400,8 +401,6 @@ class Translator(BasicModule, pycparser.c_generator.CGenerator):
         self.removeemptylines()
         if self.__produce_counter_examples:
             self.generatelinenumbers()
-        else:
-            self.remove_line_numbers()
 
     def getlinenumbertable(self):
         linenumbers = ''
@@ -417,21 +416,6 @@ class Translator(BasicModule, pycparser.c_generator.CGenerator):
 
         for line in self.output.splitlines():
             if line.strip() != '':
-                cleanoutput += line + '\n'
-
-        self.output = cleanoutput
-
-    def remove_line_numbers(self):
-        """
-        Removes lines containing line number information without actually computing them as generatelinenumbers does.
-        This function is called when produce_counter_examples is false, generatelinenumbers is called otherwise
-        """
-        cleanoutput = ''  # output without linemarkers
-
-        for line in self.output.splitlines():
-            if line.startswith('# '):
-                continue
-            else:
                 cleanoutput += line + '\n'
 
         self.output = cleanoutput
@@ -531,10 +515,9 @@ class Translator(BasicModule, pycparser.c_generator.CGenerator):
                 # in which case the annotation needs to be repeated at each line..
                 #
                 if self.currentInputLineNumber != 0 and self.currentInputLineNumber not in self.lines:
-                    self.lines.append(
+                    self.lines.add(
                         self.currentInputLineNumber)  # now until next input line is read, do not add further markers
                     lineCoords = '\n' + self._getCurrentCoords(node) + '\n'  # + '<-' + str(self.stack[-1]) + '\n'
-
         retval = lineCoords + super(Translator, self).visit(node)
 
         self.stack.pop()

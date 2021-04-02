@@ -237,11 +237,9 @@ class unroller(core.module.Translator):
             self.__labelToChange.append({})
 
             #
-            oldlineslen = len(
-                self.lines)  # save the number of entries in self.lines so after the visit() we can rever them back
+            oldlines = self.lines.copy()  # save copy  self.lines so after the visit() we can revert them back
             block = self._generate_stmt(n.stmt, add_indent=True)
-            self.lines = self.lines[
-                         :oldlineslen]  # revert back self.lines otherwise line mapping won't work properly when duplicating threads
+            self.lines = oldlines  # revert back self.lines otherwise line mapping won't work properly when duplicating threads
 
             # Remove the coords of  next  block of the for stmt otherwise the linemarker
             # won't be generated the 2nd time.
@@ -333,11 +331,9 @@ class unroller(core.module.Translator):
             # self.__labelsDefined = []
             self.__labelToChange.append({})
 
-            oldlineslen = len(
-                self.lines)  # save the number of entries in self.lines so after the visit() we can rever them back
+            oldlines = self.lines.copy() # save copy of self.lines so after the visit() we can rever them back
             block = self._generate_stmt(n.stmt, add_indent=True)
-            self.lines = self.lines[
-                         :oldlineslen]  # revert back self.lines otherwise line mapping won't work properly when duplicating threads
+            self.lines = oldlines # revert back self.lines otherwise line mapping won't work properly when duplicating threads
 
             # Duplicate every Label defined in this loop,
             # adding to the label id the current unwind round and the loop number.
