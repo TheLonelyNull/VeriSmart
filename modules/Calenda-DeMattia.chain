@@ -12,6 +12,7 @@ spinlock
 # program simplification
 switchtransformer
 dowhileconverter
+condwaitconverter
 conditionextractor
 #shortcircuitconverter
 
@@ -23,7 +24,6 @@ unroller
 duplicator
 
 # sequentialization
-condwaitconverter
 lazyseqnewschedule
 loopAnalysis
 
